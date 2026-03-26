@@ -1,10 +1,17 @@
+import { useEffect, useRef } from 'react'
 import type { Hand, Action } from '../types'
 
 type Street = 'preflop' | 'flop' | 'turn' | 'river'
 
+interface ActionStep {
+  street: Street
+  actionIdx: number
+}
+
 interface Props {
   hand: Hand
-  street: Street
+  steps: ActionStep[]
+  stepIdx: number
 }
 
 const STREET_ORDER: Street[] = ['preflop', 'flop', 'turn', 'river']
@@ -52,54 +59,72 @@ function formatAction(action: Action, hand: Hand): string {
   }
 }
 
-function computePot(hand: Hand, upToStreet: Street): number {
-  const streetsToInclude = STREET_ORDER.slice(0, STREET_ORDER.indexOf(upToStreet) + 1)
+// Compute pot based on actions revealed up to stepIdx
+function computePot(hand: Hand, steps: ActionStep[], stepIdx: number): number {
   let pot = 0
-  for (const s of streetsToInclude) {
-    const actions: Action[] = getStreetActions(hand, s)
-    for (const a of actions) {
-      if (['call', 'bet', 'post_sb', 'post_bb'].includes(a.type)) {
-        pot += a.amount ?? 0
-      } else if (a.type === 'raise') {
-        // raise to = total in pot from that player on this street, approximate by amount
-        pot += a.amount ?? 0
-      } else if (a.type === 'uncalled') {
-        pot -= a.amount ?? 0
-      }
+  for (let i = 0; i < stepIdx; i++) {
+    const { street, actionIdx } = steps[i]
+    const action = getStreetActions(hand, street)[actionIdx]
+    if (!action) continue
+    if (['call', 'bet', 'post_sb', 'post_bb', 'raise'].includes(action.type)) {
+      pot += action.amount ?? 0
+    } else if (action.type === 'uncalled') {
+      pot -= action.amount ?? 0
     }
   }
   return pot
 }
 
-export default function ActionLog({ hand, street }: Props) {
-  const currentStreetIdx = STREET_ORDER.indexOf(street)
-  const visibleStreets = STREET_ORDER.slice(0, currentStreetIdx + 1)
+export default function ActionLog({ hand, steps, stepIdx }: Props) {
+  const highlightRef = useRef<HTMLDivElement>(null)
 
-  const pot = computePot(hand, street)
+  useEffect(() => {
+    highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [stepIdx])
+
+  const lastStep = stepIdx > 0 ? steps[stepIdx - 1] : null
+  const lastStreetIdx = lastStep ? STREET_ORDER.indexOf(lastStep.street) : -1
+
+  const pot = computePot(hand, steps, stepIdx)
 
   return (
     <div className="flex flex-col gap-3 h-full">
       <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Action Log</h3>
-      <div className="flex-1 overflow-y-auto flex flex-col gap-4 pr-1">
-        {visibleStreets.map((s) => {
-          const actions: Action[] = getStreetActions(hand, s)
-          if (actions.length === 0 && s !== 'preflop') return null
-          return (
-            <div key={s}>
-              <div className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1">
-                {STREET_LABELS[s]}
-              </div>
-              <div className="flex flex-col gap-0.5">
-                {actions.length === 0 ? (
-                  <span className="text-xs text-gray-500 italic">No actions</span>
-                ) : (
-                  actions.map((action, i) => {
+      {stepIdx === 0 ? (
+        <div className="flex-1 flex items-center justify-center text-xs text-gray-600 italic">
+          Press → to start
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto flex flex-col gap-4 pr-1">
+          {STREET_ORDER.map((s, si) => {
+            // Streets after the last revealed street: show nothing
+            if (si > lastStreetIdx) return null
+
+            const actions = getStreetActions(hand, s)
+            // For streets before the last: show all actions
+            // For the last street: show up to lastStep.actionIdx (inclusive)
+            const count = si < lastStreetIdx ? actions.length : (lastStep?.actionIdx ?? -1) + 1
+            const shown = actions.slice(0, count)
+
+            if (shown.length === 0) return null
+
+            return (
+              <div key={s}>
+                <div className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1">
+                  {STREET_LABELS[s]}
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  {shown.map((action, i) => {
                     const isHero = action.player === hand.heroId
+                    const isCurrent = lastStep?.street === s && lastStep.actionIdx === i
                     return (
                       <div
                         key={i}
-                        className={`text-sm px-2 py-0.5 rounded ${
-                          isHero
+                        ref={isCurrent ? highlightRef : null}
+                        className={`text-sm px-2 py-0.5 rounded transition-colors ${
+                          isCurrent
+                            ? 'bg-emerald-700/60 ring-1 ring-emerald-400 text-emerald-100 font-semibold'
+                            : isHero
                             ? 'text-emerald-300 bg-emerald-900/30 font-medium'
                             : 'text-gray-300'
                         }`}
@@ -107,13 +132,13 @@ export default function ActionLog({ hand, street }: Props) {
                         {formatAction(action, hand)}
                       </div>
                     )
-                  })
-                )}
+                  })}
+                </div>
               </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
       <div className="border-t border-gray-700 pt-2 mt-auto">
         <div className="flex justify-between items-center text-sm">
           <span className="text-gray-400">Pot</span>

@@ -1,8 +1,6 @@
 import { create } from 'zustand'
 import type { Session, Hand, FlaggedHand } from './types'
 
-type Street = 'preflop' | 'flop' | 'turn' | 'river'
-
 interface AppState {
   // Session
   session: Session | null
@@ -11,10 +9,6 @@ interface AppState {
   // Selected hand for replayer
   selectedHand: Hand | null
   setSelectedHand: (hand: Hand | null) => void
-
-  // Current street in replayer
-  street: Street
-  setStreet: (street: Street) => void
 
   // AI results
   flaggedHands: FlaggedHand[]
@@ -41,10 +35,7 @@ export const useStore = create<AppState>((set) => ({
   setSession: (session) => set({ session }),
 
   selectedHand: null,
-  setSelectedHand: (hand) => set({ selectedHand: hand, street: 'preflop' }),
-
-  street: 'preflop',
-  setStreet: (street) => set({ street }),
+  setSelectedHand: (hand) => set({ selectedHand: hand }),
 
   flaggedHands: [],
   setFlaggedHands: (hands) => set({ flaggedHands: hands }),

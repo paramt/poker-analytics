@@ -11,21 +11,17 @@ import { loadSession } from './lib/db'
 
 function HandPage() {
   const { id, handId } = useParams<{ id: string; handId: string }>()
-  const { session, setSession, setFlaggedHands, setStreet } = useStore()
+  const { session, setSession, setFlaggedHands } = useStore()
   const [loading, setLoading] = useState(false)
   const [missing, setMissing] = useState(false)
 
   useEffect(() => {
-    if (session?.id === id) {
-      setStreet('preflop')
-      return
-    }
+    if (session?.id === id) return
     setLoading(true)
     loadSession(id).then(s => {
       if (s) {
         setSession(s)
         setFlaggedHands(s.flaggedHands ?? [])
-        setStreet('preflop')
       } else {
         setMissing(true)
       }

@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useStore } from '../store'
 import type { Hand } from '../types'
 import PokerTable from './PokerTable'
@@ -14,12 +15,27 @@ const STREET_LABELS: Record<Street, string> = {
   river: 'River',
 }
 
-function suitColor(card: string): string {
-  if (card.includes('♥') || card.includes('♦')) return 'text-red-500'
-  // Clubs (♣) and Spades (♠) are black suits — use dark text on the light card background
-  return 'text-gray-900'
+interface ActionStep {
+  street: Street
+  actionIdx: number
 }
 
+function getStreetActions(hand: Hand, s: Street) {
+  switch (s) {
+    case 'preflop': return hand.preflop
+    case 'flop': return hand.flop
+    case 'turn': return hand.turn
+    case 'river': return hand.river
+  }
+}
+
+function buildSteps(hand: Hand): ActionStep[] {
+  const steps: ActionStep[] = []
+  for (const street of STREETS) {
+    getStreetActions(hand, street).forEach((_, idx) => steps.push({ street, actionIdx: idx }))
+  }
+  return steps
+}
 
 function isStreetAvailable(hand: Hand, s: Street): boolean {
   if (s === 'preflop') return true
@@ -29,21 +45,61 @@ function isStreetAvailable(hand: Hand, s: Street): boolean {
   return false
 }
 
+function suitColor(card: string): string {
+  if (card.includes('♥') || card.includes('♦')) return 'text-red-500'
+  // Clubs (♣) and Spades (♠) are black suits — use dark text on the light card background
+  return 'text-gray-900'
+}
+
+const TAG_COLORS: Record<string, string> = {
+  learning: 'bg-amber-600 text-amber-100',
+  hero: 'bg-blue-600 text-blue-100',
+  laydown: 'bg-purple-600 text-purple-100',
+  bigpot: 'bg-orange-600 text-orange-100',
+}
+
 interface Props {
   hand: Hand
   hideBack?: boolean
 }
 
 export default function HandReplayer({ hand, hideBack = false }: Props) {
-  const { street, setStreet, flaggedHands } = useStore()
-
+  const { flaggedHands } = useStore()
   const flaggedData = flaggedHands.find((f) => f.handId === hand.id)
 
-  const TAG_COLORS: Record<string, string> = {
-    learning: 'bg-amber-600 text-amber-100',
-    hero: 'bg-blue-600 text-blue-100',
-    laydown: 'bg-purple-600 text-purple-100',
-    bigpot: 'bg-orange-600 text-orange-100',
+  const steps = useMemo(() => buildSteps(hand), [hand])
+  const totalSteps = steps.length
+
+  const [stepIdx, setStepIdx] = useState(0)
+
+  // Reset to start whenever the hand changes
+  useEffect(() => { setStepIdx(0) }, [hand.id])
+
+  const goNext = useCallback(() => setStepIdx(i => Math.min(i + 1, totalSteps)), [totalSteps])
+  const goPrev = useCallback(() => setStepIdx(i => Math.max(i - 1, 0)), [])
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      // Don't intercept arrow keys when user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.key === 'ArrowRight') goNext()
+      if (e.key === 'ArrowLeft') goPrev()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [goNext, goPrev])
+
+  // Board street: based on what's next to happen, so the board appears before actions on that street
+  const boardStreet: Street =
+    stepIdx < steps.length
+      ? steps[stepIdx].street
+      : stepIdx > 0
+      ? steps[stepIdx - 1].street
+      : 'preflop'
+
+  function handleStreetClick(s: Street) {
+    const firstIdx = steps.findIndex(step => step.street === s)
+    setStepIdx(firstIdx === -1 ? 0 : firstIdx)
   }
 
   return (
@@ -81,7 +137,7 @@ export default function HandReplayer({ hand, hideBack = false }: Props) {
                 return (
                   <span
                     key={i}
-                    className={`inline-flex flex-col items-center bg-gray-100 text-gray-900 rounded px-1.5 py-0.5 text-sm font-bold border border-gray-300`}
+                    className="inline-flex flex-col items-center bg-gray-100 text-gray-900 rounded px-1.5 py-0.5 text-sm font-bold border border-gray-300"
                   >
                     <span className={suitColor(card)}>{rank}{suit}</span>
                   </span>
@@ -107,16 +163,16 @@ export default function HandReplayer({ hand, hideBack = false }: Props) {
         </div>
       )}
 
-      {/* Street navigation */}
+      {/* Street tabs */}
       <div className="flex gap-1 bg-gray-800 rounded-lg p-1">
         {STREETS.map((s) => {
           const available = isStreetAvailable(hand, s)
-          const active = street === s
+          const active = boardStreet === s
           return (
             <button
               key={s}
               disabled={!available}
-              onClick={() => setStreet(s)}
+              onClick={() => handleStreetClick(s)}
               className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 active
                   ? 'bg-emerald-700 text-white'
@@ -133,14 +189,54 @@ export default function HandReplayer({ hand, hideBack = false }: Props) {
 
       {/* Main content */}
       <div className="flex gap-4 flex-1 min-h-0">
-        {/* Table */}
-        <div className="flex-1 min-w-0">
-          <PokerTable hand={hand} street={street} />
+        <div className="flex flex-col flex-1 min-w-0 gap-2">
+          <PokerTable hand={hand} steps={steps} stepIdx={stepIdx} boardStreet={boardStreet} />
+
+          {/* Step controls below the table */}
+          <div className="flex items-center justify-center gap-4">
+            <button
+              onClick={goPrev}
+              disabled={stepIdx === 0}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              Prev
+            </button>
+            <span className="text-xs text-gray-500 w-20 text-center">
+              {stepIdx === 0 ? 'Start' : stepIdx === totalSteps ? 'End' : `${stepIdx} / ${totalSteps}`}
+            </span>
+            <button
+              onClick={goNext}
+              disabled={stepIdx === totalSteps}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Action log sidebar */}
         <div className="w-56 shrink-0 bg-gray-800 rounded-xl p-4 overflow-y-auto">
-          <ActionLog hand={hand} street={street} />
+          <ActionLog hand={hand} steps={steps} stepIdx={stepIdx} />
         </div>
       </div>
     </div>

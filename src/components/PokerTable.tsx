@@ -3,9 +3,16 @@ import { bestHandDescription } from '../lib/handEval'
 
 type Street = 'preflop' | 'flop' | 'turn' | 'river'
 
+interface ActionStep {
+  street: Street
+  actionIdx: number
+}
+
 interface Props {
   hand: Hand
-  street: Street
+  steps: ActionStep[]
+  stepIdx: number
+  boardStreet: Street
 }
 
 function suitColor(card: string): string {
@@ -48,15 +55,13 @@ function getStreetActions(hand: Hand, s: Street) {
   }
 }
 
-function getFoldedPlayers(hand: Hand, street: Street): Set<string> {
-  const streetOrder: Street[] = ['preflop', 'flop', 'turn', 'river']
-  const cutIdx = streetOrder.indexOf(street)
-  const streetsToCheck = streetOrder.slice(0, cutIdx + 1)
+// Returns the set of players who have folded up to (but not including) the current step
+function getFoldedPlayers(hand: Hand, steps: ActionStep[], stepIdx: number): Set<string> {
   const folded = new Set<string>()
-  for (const s of streetsToCheck) {
-    for (const action of getStreetActions(hand, s)) {
-      if (action.type === 'fold') folded.add(action.player)
-    }
+  for (let i = 0; i < stepIdx; i++) {
+    const { street, actionIdx } = steps[i]
+    const action = getStreetActions(hand, street)[actionIdx]
+    if (action?.type === 'fold') folded.add(action.player)
   }
   return folded
 }
@@ -76,18 +81,28 @@ function seatPosition(index: number, total: number): [number, number] {
 
 const STREET_ORDER: Street[] = ['preflop', 'flop', 'turn', 'river']
 
-// Compute a player's stack after all actions through the given street.
+// Compute a player's stack after all actions revealed up to stepIdx.
 // Starts from initial stack and subtracts money committed, adds back uncalled bets and collects.
-function computeStackAfterStreet(
+function computeStackUpToStep(
   hand: Hand,
   shortId: string,
-  upToStreet: Street,
+  steps: ActionStep[],
+  stepIdx: number,
 ): number {
   let stack = hand.players[shortId].stack
-  const streetsToProcess = STREET_ORDER.slice(0, STREET_ORDER.indexOf(upToStreet) + 1)
-  for (const s of streetsToProcess) {
-    let streetCommitted = 0 // reset each street
-    for (const action of getStreetActions(hand, s)) {
+  if (stepIdx === 0) return stack
+
+  const lastStep = steps[stepIdx - 1]
+  const lastStreetIdx = STREET_ORDER.indexOf(lastStep.street)
+
+  for (let si = 0; si <= lastStreetIdx; si++) {
+    const s = STREET_ORDER[si]
+    const actions = getStreetActions(hand, s)
+    // For streets before last: process all actions; for last street: process up to lastStep.actionIdx (inclusive)
+    const limit = si < lastStreetIdx ? actions.length : lastStep.actionIdx + 1
+    let streetCommitted = 0
+    for (let ai = 0; ai < Math.min(limit, actions.length); ai++) {
+      const action = actions[ai]
       if (action.player !== shortId) continue
       const amt = action.amount ?? 0
       if (
@@ -111,19 +126,19 @@ function computeStackAfterStreet(
   return stack
 }
 
-function getShownCards(hand: Hand, shortId: string): string[] {
-  const allStreets = [hand.preflop, hand.flop, hand.turn, hand.river]
-  for (const actions of allStreets) {
-    for (const action of actions) {
-      if (action.type === 'show' && action.player === shortId && action.cards?.length) {
-        return action.cards
-      }
+// Returns cards shown by a player up to the current step (step-aware)
+function getShownCards(hand: Hand, shortId: string, steps: ActionStep[], stepIdx: number): string[] {
+  for (let i = 0; i < stepIdx; i++) {
+    const { street, actionIdx } = steps[i]
+    const action = getStreetActions(hand, street)[actionIdx]
+    if (action?.type === 'show' && action.player === shortId && action.cards?.length) {
+      return action.cards
     }
   }
   return []
 }
 
-export default function PokerTable({ hand, street }: Props) {
+export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props) {
   const players = Object.entries(hand.players) // [shortId, { displayName, seat, stack }]
   // Sort by seat number for consistent ordering
   const sortedPlayers = [...players].sort((a, b) => a[1].seat - b[1].seat)
@@ -136,8 +151,8 @@ export default function PokerTable({ hand, street }: Props) {
       ? [...sortedPlayers.slice(heroIdx), ...sortedPlayers.slice(0, heroIdx)]
       : sortedPlayers
 
-  const foldedPlayers = getFoldedPlayers(hand, street)
-  const boardCards = getVisibleBoardCards(hand.board, street)
+  const foldedPlayers = getFoldedPlayers(hand, steps, stepIdx)
+  const boardCards = getVisibleBoardCards(hand.board, boardStreet)
 
   return (
     <div className="relative w-full" style={{ paddingBottom: '60%' }}>
@@ -164,8 +179,8 @@ export default function PokerTable({ hand, street }: Props) {
         const isHero = shortId === hand.heroId
         const isFolded = foldedPlayers.has(shortId)
         const pos = hand.seatPositions[shortId]
-        const currentStack = computeStackAfterStreet(hand, shortId, street)
-        const visibleCards = isHero ? hand.holeCards : getShownCards(hand, shortId)
+        const currentStack = computeStackUpToStep(hand, shortId, steps, stepIdx)
+        const visibleCards = isHero ? hand.holeCards : getShownCards(hand, shortId, steps, stepIdx)
         const handDesc = visibleCards.length > 0 ? bestHandDescription(visibleCards, boardCards) : null
 
         return (

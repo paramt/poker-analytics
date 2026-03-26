@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import type { Hand } from '../types'
 import { decodeHand } from '../lib/compress'
 import PokerTable from './PokerTable'
@@ -6,6 +6,11 @@ import ActionLog from './ActionLog'
 import ShareButton from './ShareButton'
 
 type Street = 'preflop' | 'flop' | 'turn' | 'river'
+
+interface ActionStep {
+  street: Street
+  actionIdx: number
+}
 
 const STREETS: Street[] = ['preflop', 'flop', 'turn', 'river']
 const STREET_LABELS: Record<Street, string> = {
@@ -28,10 +33,27 @@ function isStreetAvailable(hand: Hand, s: Street): boolean {
   return false
 }
 
+function getStreetActions(hand: Hand, s: Street) {
+  switch (s) {
+    case 'preflop': return hand.preflop
+    case 'flop': return hand.flop
+    case 'turn': return hand.turn
+    case 'river': return hand.river
+  }
+}
+
+function buildSteps(hand: Hand): ActionStep[] {
+  const steps: ActionStep[] = []
+  for (const street of STREETS) {
+    getStreetActions(hand, street).forEach((_, idx) => steps.push({ street, actionIdx: idx }))
+  }
+  return steps
+}
+
 export default function SharedHandView() {
   const [hand, setHand] = useState<Hand | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [street, setStreet] = useState<Street>('preflop')
+  const [stepIdx, setStepIdx] = useState(0)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -47,6 +69,35 @@ export default function SharedHandView() {
     }
     setHand(decoded)
   }, [])
+
+  const steps = useMemo(() => (hand ? buildSteps(hand) : []), [hand])
+  const totalSteps = steps.length
+
+  const goNext = useCallback(() => setStepIdx(i => Math.min(i + 1, totalSteps)), [totalSteps])
+  const goPrev = useCallback(() => setStepIdx(i => Math.max(i - 1, 0)), [])
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.key === 'ArrowRight') goNext()
+      if (e.key === 'ArrowLeft') goPrev()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [goNext, goPrev])
+
+  const boardStreet: Street = hand
+    ? stepIdx < steps.length
+      ? steps[stepIdx].street
+      : stepIdx > 0
+      ? steps[stepIdx - 1].street
+      : 'preflop'
+    : 'preflop'
+
+  function handleStreetClick(s: Street) {
+    const firstIdx = steps.findIndex(step => step.street === s)
+    setStepIdx(firstIdx === -1 ? 0 : firstIdx)
+  }
 
   if (error) {
     return (
@@ -117,12 +168,12 @@ export default function SharedHandView() {
         <div className="flex gap-1 bg-gray-800 rounded-lg p-1">
           {STREETS.map((s) => {
             const available = isStreetAvailable(hand, s)
-            const active = street === s
+            const active = boardStreet === s
             return (
               <button
                 key={s}
                 disabled={!available}
-                onClick={() => setStreet(s)}
+                onClick={() => handleStreetClick(s)}
                 className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   active
                     ? 'bg-emerald-700 text-white'
@@ -139,11 +190,52 @@ export default function SharedHandView() {
 
         {/* Main content */}
         <div className="flex gap-4 min-h-0">
-          <div className="flex-1 min-w-0">
-            <PokerTable hand={hand} street={street} />
+          <div className="flex flex-col flex-1 min-w-0 gap-2">
+            <PokerTable hand={hand} steps={steps} stepIdx={stepIdx} boardStreet={boardStreet} />
+
+            {/* Step controls */}
+            <div className="flex items-center justify-center gap-4">
+              <button
+                onClick={goPrev}
+                disabled={stepIdx === 0}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Prev
+              </button>
+              <span className="text-xs text-gray-500 w-20 text-center">
+                {stepIdx === 0 ? 'Start' : stepIdx === totalSteps ? 'End' : `${stepIdx} / ${totalSteps}`}
+              </span>
+              <button
+                onClick={goNext}
+                disabled={stepIdx === totalSteps}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
           </div>
           <div className="w-56 shrink-0 bg-gray-800 rounded-xl p-4">
-            <ActionLog hand={hand} street={street} />
+            <ActionLog hand={hand} steps={steps} stepIdx={stepIdx} />
           </div>
         </div>
 
