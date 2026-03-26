@@ -22,11 +22,10 @@ function CardDisplay({ card, small = false }: { card: string; small?: boolean })
   return (
     <span
       className={`inline-flex flex-col items-center justify-center bg-gray-100 text-gray-900 rounded font-bold border border-gray-300 ${
-        small ? 'w-6 h-8 text-xs' : 'w-8 h-10 text-sm'
+        small ? 'px-1 h-8 text-xs' : 'px-1.5 h-10 text-sm'
       }`}
     >
-      <span className={`leading-none ${color} font-bold`}>{rank}</span>
-      <span className={`leading-none ${color}`}>{suit}</span>
+      <span className={`leading-none whitespace-nowrap ${color} font-bold`}>{rank}{suit}</span>
     </span>
   )
 }

@@ -247,7 +247,8 @@ export default function SessionView() {
                   {activeTab === 'flagged' ? 'No flagged hands yet.' : 'No hands found.'}
                 </div>
               ) : (
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[600px]">
                   <thead>
                     <tr className="border-b border-gray-700 text-xs text-gray-400 uppercase tracking-wide">
                       <th className="text-left px-4 py-3">Hand #</th>
@@ -313,6 +314,7 @@ export default function SessionView() {
                     })}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           )}
