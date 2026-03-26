@@ -235,7 +235,7 @@ export default function SharedHandView() {
             </div>
           </div>
           <div className="w-56 shrink-0 bg-gray-800 rounded-xl p-4">
-            <ActionLog hand={hand} steps={steps} stepIdx={stepIdx} />
+            <ActionLog hand={hand} steps={steps} stepIdx={stepIdx} onStepChange={setStepIdx} />
           </div>
         </div>
 

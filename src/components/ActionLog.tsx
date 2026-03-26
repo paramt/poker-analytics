@@ -12,6 +12,7 @@ interface Props {
   hand: Hand
   steps: ActionStep[]
   stepIdx: number
+  onStepChange: (idx: number) => void
 }
 
 const STREET_ORDER: Street[] = ['preflop', 'flop', 'turn', 'river']
@@ -75,7 +76,7 @@ function computePot(hand: Hand, steps: ActionStep[], stepIdx: number): number {
   return pot
 }
 
-export default function ActionLog({ hand, steps, stepIdx }: Props) {
+export default function ActionLog({ hand, steps, stepIdx, onStepChange }: Props) {
   const highlightRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -117,16 +118,18 @@ export default function ActionLog({ hand, steps, stepIdx }: Props) {
                   {shown.map((action, i) => {
                     const isHero = action.player === hand.heroId
                     const isCurrent = lastStep?.street === s && lastStep.actionIdx === i
+                    const globalIdx = steps.findIndex(step => step.street === s && step.actionIdx === i)
                     return (
                       <div
                         key={i}
                         ref={isCurrent ? highlightRef : null}
-                        className={`text-sm px-2 py-0.5 rounded transition-colors ${
+                        onClick={() => onStepChange(globalIdx + 1)}
+                        className={`text-sm px-2 py-0.5 rounded transition-colors cursor-pointer ${
                           isCurrent
                             ? 'bg-emerald-700/60 ring-1 ring-emerald-400 text-emerald-100 font-semibold'
                             : isHero
-                            ? 'text-emerald-300 bg-emerald-900/30 font-medium'
-                            : 'text-gray-300'
+                            ? 'text-emerald-300 bg-emerald-900/30 font-medium hover:bg-emerald-900/50'
+                            : 'text-gray-300 hover:bg-gray-700/50'
                         }`}
                       >
                         {formatAction(action, hand)}
