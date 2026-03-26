@@ -6,6 +6,7 @@ import { computeStats, tagBigPots } from '../lib/stats'
 import { saveSession, loadSession, listSessions } from '../lib/db'
 import { scanHands } from '../lib/claude'
 import ApiKeyInput from './ApiKeyInput'
+import { DEMO_FLAGS } from '../data/demoFlags'
 
 export default function UploadScreen() {
   const { setSession, setFlaggedHands, setScanState, apiKey } = useStore()
@@ -18,6 +19,7 @@ export default function UploadScreen() {
   const [parseError, setParseError] = useState<string | null>(null)
   const [recentSessions, setRecentSessions] = useState<Session[]>([])
   const [isStarting, setIsStarting] = useState(false)
+  const [isLoadingDemo, setIsLoadingDemo] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -127,6 +129,47 @@ export default function UploadScreen() {
     }
   }
 
+  async function handleDemo() {
+    setIsLoadingDemo(true)
+    setParseError(null)
+
+    try {
+      const response = await fetch('/demo.csv')
+      if (!response.ok) throw new Error('Failed to fetch demo data.')
+      const csvText = await response.text()
+
+      const demoHeroId = 'PARAM001'
+      const hands = parseCSV(csvText, demoHeroId)
+      if (hands.length === 0) throw new Error('Demo CSV produced no hands.')
+
+      const stats = computeStats(hands, demoHeroId)
+      const bigpotFlags = tagBigPots(hands)
+      // Merge client-computed bigpot flags with the pre-computed AI flags
+      const allFlags = [...bigpotFlags, ...DEMO_FLAGS]
+
+      const heroPlayer = hands[0]?.players[demoHeroId]
+
+      const session: Session = {
+        id: crypto.randomUUID(),
+        filename: 'demo-session.csv',
+        uploadedAt: new Date().toISOString(),
+        heroId: demoHeroId,
+        heroDisplayName: heroPlayer?.displayName ?? 'Param',
+        hands,
+        stats,
+        flaggedHands: allFlags,
+      }
+
+      await saveSession(session)
+      setSession(session)
+      setFlaggedHands(allFlags)
+      // No AI scan triggered — pre-computed flags are already loaded
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : 'Failed to load demo session.')
+      setIsLoadingDemo(false)
+    }
+  }
+
   const canStart = !!csvText && !!heroId
 
   return (
@@ -233,6 +276,23 @@ export default function UploadScreen() {
         >
           {isStarting ? 'Loading session…' : 'Start Session'}
         </button>
+
+        {/* Try Demo */}
+        <div className="flex items-center justify-center gap-3">
+          <div className="h-px flex-1 bg-gray-700" />
+          <span className="text-xs text-gray-500 uppercase tracking-widest">or</span>
+          <div className="h-px flex-1 bg-gray-700" />
+        </div>
+        <button
+          onClick={handleDemo}
+          disabled={isLoadingDemo}
+          className="w-full py-2.5 rounded-xl text-sm font-medium transition-colors border border-gray-600 text-gray-300 hover:border-gray-500 hover:text-gray-100 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          {isLoadingDemo ? 'Loading demo…' : 'Try a sample session →'}
+        </button>
+        <p className="text-center text-xs text-gray-600 -mt-3">
+          Pre-loaded hands with Param, Nadish, Raghav, Gagan, Justin &amp; Anujan — no API key needed
+        </p>
 
         {/* Recent sessions */}
         {recentSessions.length > 0 && (
