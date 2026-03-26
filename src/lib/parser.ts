@@ -252,7 +252,8 @@ function parseHand(lines: string[], heroId: string, timestamp: string): Hand | n
   const board2: string[] = []
   let totalCollected = 0
   let uncalledReturned = 0
-  const heroPutIn = new Map<string, number>() // track per-player money in
+  const heroPutIn = new Map<string, number>() // track per-player money in (hand total)
+  const streetCommitted = new Map<string, number>() // track per-player street commitment (resets each street)
 
   for (const line of lines) {
     // Player stacks (only first occurrence — start of hand)
@@ -277,6 +278,7 @@ function parseHand(lines: string[], heroId: string, timestamp: string): Hand | n
       } else {
         board.push(...cards)
         street = 'flop'
+        streetCommitted.clear()
       }
       continue
     }
@@ -289,6 +291,7 @@ function parseHand(lines: string[], heroId: string, timestamp: string): Hand | n
       } else {
         if (card) board.push(card)
         street = 'turn'
+        streetCommitted.clear()
       }
       continue
     }
@@ -301,6 +304,7 @@ function parseHand(lines: string[], heroId: string, timestamp: string): Hand | n
       } else {
         if (card) board.push(card)
         street = 'river'
+        streetCommitted.clear()
       }
       continue
     }
@@ -319,13 +323,14 @@ function parseHand(lines: string[], heroId: string, timestamp: string): Hand | n
       uncalledReturned += action.amount ?? 0
     }
     if (action.amount && ['call', 'bet', 'raise', 'post_sb', 'post_bb'].includes(action.type)) {
+      // PokerNow logs "calls N" and "raises to N" where N is the player's TOTAL street
+      // commitment, not an incremental amount. Use the delta to avoid double-counting
+      // blinds (e.g. BB posts 20 then raises to 300 → only 280 additional chips go in).
       const prev = heroPutIn.get(action.player) ?? 0
-      if (action.type === 'raise') {
-        // raise to N means total put in is N, not incremental
-        heroPutIn.set(action.player, Math.max(prev, action.amount))
-      } else {
-        heroPutIn.set(action.player, prev + action.amount)
-      }
+      const alreadyThisStreet = streetCommitted.get(action.player) ?? 0
+      const delta = Math.max(0, action.amount - alreadyThisStreet)
+      heroPutIn.set(action.player, prev + delta)
+      streetCommitted.set(action.player, action.amount)
     }
 
     const streetActions = { preflop, flop, turn, river }[street]

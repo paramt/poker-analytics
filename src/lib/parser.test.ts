@@ -93,10 +93,9 @@ describe('parseCSV', () => {
   it('computes hero net result correctly (lost money on fold)', () => {
     const csv = buildCSV(SIMPLE_HAND_ENTRIES)
     const [hand] = parseCSV(csv, HERO_ID)
-    // Hero posted SB 10, called 60 — so paid 10+50=60 net for the call
-    // but using our model: SB=10, call to 60 = 60 total, collected 0, uncalled 0
-    // result = collected(0) - putIn(70) + uncalled(0) = -70
-    expect(hand.result).toBeLessThan(0)
+    // Hero posted SB 10, then calls 60 (total street commitment = 60, delta = 50).
+    // Total put in = 60. Collected 0. Result = -60.
+    expect(hand.result).toBe(-60)
   })
 
   it('handles Uncalled bet correctly — does not count returned amount as hero loss', () => {

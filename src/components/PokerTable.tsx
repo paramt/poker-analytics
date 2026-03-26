@@ -87,8 +87,10 @@ function computeStackAfterStreet(
   let stack = hand.players[shortId].stack
   const streetsToProcess = STREET_ORDER.slice(0, STREET_ORDER.indexOf(upToStreet) + 1)
   for (const s of streetsToProcess) {
+    let streetCommitted = 0 // reset each street
     for (const action of getStreetActions(hand, s)) {
       if (action.player !== shortId) continue
+      const amt = action.amount ?? 0
       if (
         action.type === 'call' ||
         action.type === 'bet' ||
@@ -96,9 +98,14 @@ function computeStackAfterStreet(
         action.type === 'post_sb' ||
         action.type === 'post_bb'
       ) {
-        stack -= action.amount ?? 0
-      } else if (action.type === 'uncalled' || action.type === 'collect') {
-        stack += action.amount ?? 0
+        // amt is total street commitment; only deduct the delta above what's already been committed
+        const delta = Math.max(0, amt - streetCommitted)
+        stack -= delta
+        streetCommitted = amt
+      } else if (action.type === 'uncalled') {
+        stack += amt
+      } else if (action.type === 'collect') {
+        stack += amt
       }
     }
   }
