@@ -1,4 +1,5 @@
 import type { Hand } from '../types'
+import { bestHandDescription } from '../lib/handEval'
 
 type Street = 'preflop' | 'flop' | 'turn' | 'river'
 
@@ -159,6 +160,7 @@ export default function PokerTable({ hand, street }: Props) {
         const pos = hand.seatPositions[shortId]
         const currentStack = computeStackAfterStreet(hand, shortId, street)
         const visibleCards = isHero ? hand.holeCards : getShownCards(hand, shortId)
+        const handDesc = visibleCards.length > 0 ? bestHandDescription(visibleCards, boardCards) : null
 
         return (
           <div
@@ -194,10 +196,17 @@ export default function PokerTable({ hand, street }: Props) {
               </div>
               <div className="text-gray-300 text-[10px]">{currentStack}</div>
               {visibleCards.length > 0 && (
-                <div className="flex gap-0.5 mt-0.5">
-                  {visibleCards.map((card, ci) => (
-                    <CardDisplay key={ci} card={card} small />
-                  ))}
+                <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                  <div className="flex gap-0.5">
+                    {visibleCards.map((card, ci) => (
+                      <CardDisplay key={ci} card={card} small />
+                    ))}
+                  </div>
+                  {handDesc && (
+                    <span className={`text-[10px] font-medium ${isHero ? 'text-emerald-200' : 'text-yellow-300'}`}>
+                      {handDesc}
+                    </span>
+                  )}
                 </div>
               )}
               {isFolded && (
