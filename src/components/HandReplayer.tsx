@@ -3,6 +3,7 @@ import type { Hand } from '../types'
 import PokerTable from './PokerTable'
 import ActionLog from './ActionLog'
 import ShareButton from './ShareButton'
+import { bestHandDescription } from '../lib/handEval'
 
 type Street = 'preflop' | 'flop' | 'turn' | 'river'
 
@@ -20,6 +21,13 @@ function suitColor(card: string): string {
   return 'text-gray-900'
 }
 
+function visibleBoard(hand: Hand, s: Street): string[] {
+  if (s === 'preflop') return []
+  if (s === 'flop') return hand.board.slice(0, 3)
+  if (s === 'turn') return hand.board.slice(0, 4)
+  return hand.board.slice(0, 5)
+}
+
 function isStreetAvailable(hand: Hand, s: Street): boolean {
   if (s === 'preflop') return true
   if (s === 'flop') return hand.board.length >= 3
@@ -35,6 +43,7 @@ interface Props {
 
 export default function HandReplayer({ hand, hideBack = false }: Props) {
   const { street, setStreet, setSelectedHand, flaggedHands } = useStore()
+  const handDescription = bestHandDescription(hand.holeCards, visibleBoard(hand, street))
 
   const flaggedData = flaggedHands.find((f) => f.handId === hand.id)
 
@@ -72,7 +81,7 @@ export default function HandReplayer({ hand, hideBack = false }: Props) {
             Hand #{hand.id}
           </h2>
           {hand.holeCards.length > 0 && (
-            <div className="flex gap-1 items-center">
+            <div className="flex gap-1 items-center flex-wrap">
               {hand.holeCards.map((card, i) => {
                 const parts = card.match(/^(\d+|[AKQJ])(.*)$/)
                 const rank = parts ? parts[1] : card
@@ -86,6 +95,9 @@ export default function HandReplayer({ hand, hideBack = false }: Props) {
                   </span>
                 )
               })}
+              {handDescription && (
+                <span className="text-xs text-emerald-400 font-medium ml-1">{handDescription}</span>
+              )}
             </div>
           )}
         </div>
