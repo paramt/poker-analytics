@@ -32,32 +32,71 @@ function getStreetActions(hand: Hand, s: Street): Action[] {
   }
 }
 
-function formatAction(action: Action, hand: Hand): string {
+const ACTION_LABEL: Record<string, string> = {
+  fold: 'Fold',
+  check: 'Check',
+  call: 'Call',
+  bet: 'Bet',
+  raise: 'Raise',
+  post_sb: 'Post SB',
+  post_bb: 'Post BB',
+  collect: 'Collect',
+  show: 'Shows',
+  uncalled: 'Uncalled',
+}
+
+const ACTION_COLOR: Record<string, string> = {
+  fold: 'text-red-400',
+  check: 'text-gray-400',
+  call: 'text-blue-400',
+  bet: 'text-amber-400',
+  raise: 'text-orange-400',
+  post_sb: 'text-gray-500',
+  post_bb: 'text-gray-500',
+  collect: 'text-emerald-400',
+  show: 'text-purple-400',
+  uncalled: 'text-gray-500',
+}
+
+function ActionRow({
+  action,
+  hand,
+  isFuture,
+  isHero,
+}: {
+  action: Action
+  hand: Hand
+  isFuture: boolean
+  isHero: boolean
+}) {
   const pos = hand.seatPositions[action.player] ?? hand.players[action.player]?.displayName ?? action.player
-  switch (action.type) {
-    case 'fold':
-      return `${pos} folds`
-    case 'check':
-      return `${pos} checks`
-    case 'call':
-      return `${pos} calls ${action.amount ?? ''}`
-    case 'bet':
-      return `${pos} bets ${action.amount ?? ''}${action.allin ? ' (all-in)' : ''}`
-    case 'raise':
-      return `${pos} raises to ${action.amount ?? ''}${action.allin ? ' (all-in)' : ''}`
-    case 'post_sb':
-      return `${pos} posts SB ${action.amount ?? ''}`
-    case 'post_bb':
-      return `${pos} posts BB ${action.amount ?? ''}`
-    case 'collect':
-      return `${pos} collects ${action.amount ?? ''}`
-    case 'show':
-      return `${pos} shows`
-    case 'uncalled':
-      return `Uncalled bet of ${action.amount ?? ''} returned to ${pos}`
-    default:
-      return `${pos} ${action.type}`
+  const label = ACTION_LABEL[action.type] ?? action.type
+  const hasAmount = action.amount != null &&
+    ['call', 'bet', 'raise', 'post_sb', 'post_bb', 'collect', 'uncalled'].includes(action.type)
+
+  if (isFuture) {
+    return (
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-[10px] font-bold text-gray-600 shrink-0">{pos}</span>
+        <span className="text-xs text-gray-600">{label}{hasAmount ? `: ${action.amount}` : ''}</span>
+      </div>
+    )
   }
+
+  return (
+    <div className="flex items-baseline gap-1.5">
+      <span className={`text-[10px] font-bold shrink-0 ${isHero ? 'text-emerald-400' : 'text-gray-400'}`}>
+        {pos}
+      </span>
+      <span className={`text-xs font-semibold ${ACTION_COLOR[action.type] ?? 'text-gray-400'}`}>
+        {label}{hasAmount ? ':' : ''}
+      </span>
+      {hasAmount && <span className="text-xs text-gray-200">{action.amount}</span>}
+      {action.allin && (
+        <span className="text-[9px] font-bold text-red-400 uppercase">all-in</span>
+      )}
+    </div>
+  )
 }
 
 // Compute pot based on actions revealed up to stepIdx
@@ -112,17 +151,17 @@ export default function ActionLog({ hand, steps, stepIdx, onStepChange }: Props)
                       key={i}
                       ref={isCurrent ? highlightRef : null}
                       onClick={() => onStepChange(globalIdx + 1)}
-                      className={`text-sm px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                      className={`px-2 py-1 rounded transition-colors cursor-pointer ${
                         isCurrent
-                          ? 'bg-emerald-700/60 ring-1 ring-emerald-400 text-emerald-100 font-semibold'
+                          ? 'bg-emerald-700/60 ring-1 ring-emerald-400'
                           : isFuture
-                          ? 'text-gray-600 hover:text-gray-400 hover:bg-gray-700/30'
+                          ? 'hover:bg-gray-700/20'
                           : isHero
-                          ? 'text-emerald-300 bg-emerald-900/30 font-medium hover:bg-emerald-900/50'
-                          : 'text-gray-300 hover:bg-gray-700/50'
+                          ? 'bg-emerald-900/20 hover:bg-emerald-900/40'
+                          : 'hover:bg-gray-700/50'
                       }`}
                     >
-                      {formatAction(action, hand)}
+                      <ActionRow action={action} hand={hand} isFuture={isFuture} isHero={isHero} />
                     </div>
                   )
                 })}

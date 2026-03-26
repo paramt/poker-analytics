@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { Hand } from '../types'
 import { bestHandDescription } from '../lib/handEval'
 
@@ -139,6 +140,21 @@ function getShownCards(hand: Hand, shortId: string, steps: ActionStep[], stepIdx
 }
 
 export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props) {
+  const [flashPlayer, setFlashPlayer] = useState<string | null>(null)
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  useEffect(() => {
+    clearTimeout(flashTimer.current)
+    if (stepIdx === 0) { setFlashPlayer(null); return }
+    const { street, actionIdx } = steps[stepIdx - 1]
+    const action = getStreetActions(hand, street)[actionIdx]
+    if (action?.player) {
+      setFlashPlayer(action.player)
+      flashTimer.current = setTimeout(() => setFlashPlayer(null), 700)
+    }
+    return () => clearTimeout(flashTimer.current)
+  }, [stepIdx])
+
   const players = Object.entries(hand.players) // [shortId, { displayName, seat, stack }]
   // Sort by seat number for consistent ordering
   const sortedPlayers = [...players].sort((a, b) => a[1].seat - b[1].seat)
@@ -178,6 +194,7 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
         const [x, y] = seatPosition(i, rotated.length)
         const isHero = shortId === hand.heroId
         const isFolded = foldedPlayers.has(shortId)
+        const isFlashing = flashPlayer === shortId
         const pos = hand.seatPositions[shortId]
         const currentStack = computeStackUpToStep(hand, shortId, steps, stepIdx)
         const visibleCards = isHero ? hand.holeCards : getShownCards(hand, shortId, steps, stepIdx)
@@ -195,12 +212,14 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
             }}
           >
             <div
-              className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg text-xs border transition-opacity ${
+              className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg text-xs border transition-all duration-300 ${
                 isFolded ? 'opacity-40' : 'opacity-100'
               } ${
                 isHero
                   ? 'bg-emerald-700 border-emerald-400 text-white shadow-lg shadow-emerald-900'
                   : 'bg-gray-800 border-gray-600 text-gray-100'
+              } ${
+                isFlashing ? 'ring-2 ring-yellow-300 shadow-yellow-400/40 shadow-lg' : ''
               }`}
             >
               <div className="flex items-center gap-1">
