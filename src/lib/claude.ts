@@ -96,17 +96,21 @@ function summarizeHand(hand: Hand): HandSummary | null {
 export function buildPrompt(batch: Hand[]): string {
   const summaries = batch.map(summarizeHand).filter(Boolean)
 
-  return `You are a poker coach analyzing hand histories. For each hand below, identify if it is a notable learning moment.
+  return `You are a poker coach analyzing hand histories. For each hand below, identify if it is a genuinely notable moment worth reviewing.
 
 Return ONLY a JSON array (no markdown, no explanation) in this exact format:
 [{"handId": <number>, "tag": "<tag>", "summary": "<1-2 sentence summary>"}]
 
-Tags:
-- "learning": decision point where EV was likely lost (wrong sizing, wrong fold/call/raise)
-- "hero": correct call or raise against a tough range that most players get wrong
-- "laydown": hero saved money by folding correctly (opponent held the goods)
+Tags (use exactly one per flagged hand):
+- "hero": Hero made a tough call with a marginal hand (e.g. ace-high, middle pair, bottom two pair) on a dangerous board against heavy betting or a big shove, and it was correct. The strength of the call lies in reading the opponent's range — not in holding a strong hand.
+- "laydown": Hero folded a genuinely strong hand (e.g. top pair, overpair, set, straight) facing action that credibly represented a better hand. The fold saved significant chips and required real discipline.
+- "learning": A clear mistake — wrong sizing, spewing chips with a bluff on the wrong board, calling off a stack with a dominated hand, or missing obvious value. Focus on decisions that cost meaningful EV, not minor leaks.
 
-Only include hands that are genuinely notable. Skip routine hands. Return [] if none qualify.
+Rules:
+- Only flag hands where hero saw a flop (preflop folds are almost never notable).
+- Do NOT flag a hand as "hero" just because hero won — the call must have been marginal at the time.
+- Do NOT flag a hand as "laydown" if hero folded preflop or folded a weak hand — the fold must have sacrificed real showdown equity.
+- Skip routine hands (standard c-bets, obvious folds, clear value bets). Return [] if nothing qualifies.
 
 Hands:
 ${JSON.stringify(summaries, null, 0)}`
