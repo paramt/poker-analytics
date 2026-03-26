@@ -1,14 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation } from 'wouter'
 import { useStore } from '../store'
 import type { Session } from '../types'
 import { parseCSV, extractAllPlayers } from '../lib/parser'
 import { computeStats, tagBigPots } from '../lib/stats'
-import { saveSession, loadSession, listSessions } from '../lib/db'
+import { saveSession, listSessions } from '../lib/db'
 import { scanHands } from '../lib/claude'
 import ApiKeyInput from './ApiKeyInput'
 import { DEMO_FLAGS } from '../data/demoFlags'
 
 export default function UploadScreen() {
+  const [, navigate] = useLocation()
   const { setSession, setFlaggedHands, setScanState, apiKey } = useStore()
 
   const [dragOver, setDragOver] = useState(false)
@@ -100,6 +102,7 @@ export default function UploadScreen() {
       await saveSession(session)
       setSession(session)
       setFlaggedHands(bigpotFlags)
+      navigate(`/session/${session.id}`)
 
       // Background AI scan (fire and forget)
       if (apiKey) {
@@ -121,12 +124,8 @@ export default function UploadScreen() {
     }
   }
 
-  async function handleResume(sessionId: string) {
-    const session = await loadSession(sessionId)
-    if (session) {
-      setSession(session)
-      setFlaggedHands(session.flaggedHands ?? [])
-    }
+  function handleResume(sessionId: string) {
+    navigate(`/session/${sessionId}`)
   }
 
   async function handleDemo() {
@@ -163,6 +162,7 @@ export default function UploadScreen() {
       await saveSession(session)
       setSession(session)
       setFlaggedHands(allFlags)
+      navigate(`/session/${session.id}`)
       // No AI scan triggered — pre-computed flags are already loaded
     } catch (err) {
       setParseError(err instanceof Error ? err.message : 'Failed to load demo session.')

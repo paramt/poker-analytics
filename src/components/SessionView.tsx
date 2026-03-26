@@ -1,3 +1,4 @@
+import { useLocation } from 'wouter'
 import { useStore } from '../store'
 import type { Hand, AITag } from '../types'
 import StatsBar from './StatsBar'
@@ -57,10 +58,9 @@ function BigStatTile({ label, value, sub }: StatTileProps) {
 }
 
 export default function SessionView() {
+  const [, navigate] = useLocation()
   const {
     session,
-    setSession,
-    setSelectedHand,
     flaggedHands,
     isScanning,
     scanProgress,
@@ -74,12 +74,11 @@ export default function SessionView() {
   const { hands, stats, filename, heroDisplayName } = session
 
   function handleUploadNew() {
-    setSession(null)
-    setSelectedHand(null)
+    navigate('/')
   }
 
   function handleReplayHand(hand: Hand) {
-    setSelectedHand(hand)
+    navigate(`/session/${session!.id}/hand/${hand.id}`)
   }
 
   const flaggedIds = new Set(flaggedHands.map((f) => f.handId))

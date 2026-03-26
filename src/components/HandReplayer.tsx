@@ -35,7 +35,7 @@ interface Props {
 }
 
 export default function HandReplayer({ hand, hideBack = false }: Props) {
-  const { street, setStreet, setSelectedHand, flaggedHands } = useStore()
+  const { street, setStreet, flaggedHands } = useStore()
 
   const flaggedData = flaggedHands.find((f) => f.handId === hand.id)
 
@@ -53,7 +53,7 @@ export default function HandReplayer({ hand, hideBack = false }: Props) {
         <div className="flex items-center gap-3">
           {!hideBack && (
             <button
-              onClick={() => setSelectedHand(null)}
+              onClick={() => window.history.back()}
               className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-100 transition-colors"
             >
               <svg
