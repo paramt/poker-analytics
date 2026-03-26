@@ -1,0 +1,61 @@
+entry,at,order
+"""param @ 1c6V3eltlj"" folds",2026-03-21T05:26:35.879Z,177407079587901
+"The player ""nad @ -kxVOncdJw"" passed the room ownership to ""1000 @ 8pAlpXMD6x"".",2026-03-21T05:26:35.879Z,177407079587900
+"""1000 @ 8pAlpXMD6x"" posts a big blind of 20",2026-03-21T05:17:51.883Z,177407027188306
+"""param @ 1c6V3eltlj"" posts a small blind of 10",2026-03-21T05:17:51.883Z,177407027188305
+"Your hand is 3♦, J♦",2026-03-21T05:17:51.883Z,177407027188304
+"Player stacks: #4 ""1000 @ 8pAlpXMD6x"" (2589) | #6 ""param @ 1c6V3eltlj"" (1911)",2026-03-21T05:17:51.883Z,177407027188302
+"-- starting hand #118 (id: m51lhf1vebme)  No Limit Texas Hold'em (dealer: ""param @ 1c6V3eltlj"") --",2026-03-21T05:17:51.883Z,177407027188301
+"The player ""nad @ -kxVOncdJw"" quits the game with a stack of 0.",2026-03-21T05:17:51.883Z,177407027188300
+"-- ending hand #117 --",2026-03-21T05:17:43.877Z,177407026387702
+"""1000 @ 8pAlpXMD6x"" collected 310 from pot with Straight, 8 High on the second run  (combination: 4♥, 5♣, 6♥, 7♥, 8♥)",2026-03-21T05:17:43.877Z,177407026387701
+"""1000 @ 8pAlpXMD6x"" collected 310 from pot with Two Pair, K's & 7's (combination: A♠, 7♠, 7♥, K♣, K♥)",2026-03-21T05:17:43.877Z,177407026387700
+"River (second run): 5♣, 4♥, 2♠, 8♥ [6♥]",2026-03-21T05:17:39.846Z,177407025984600
+"Turn (second run): 5♣, 4♥, 2♠ [8♥]",2026-03-21T05:17:35.826Z,177407025582600
+"Flop (second run):  [5♣, 4♥, 2♠]",2026-03-21T05:17:31.820Z,177407025182000
+"River: 4♦, K♣, A♠, K♥ [3♣]",2026-03-21T05:17:27.755Z,177407024775500
+"Turn: 4♦, K♣, A♠ [K♥]",2026-03-21T05:17:23.751Z,177407024375100
+"Flop:  [4♦, K♣, A♠]",2026-03-21T05:17:19.708Z,177407023970800
+"""1000 @ 8pAlpXMD6x"" shows a 7♠, 7♥.",2026-03-21T05:17:15.702Z,177407023570201
+"""nad @ -kxVOncdJw"" shows a 8♣, 9♣.",2026-03-21T05:17:15.702Z,177407023570200
+"All players in hand choose to run it twice.",2026-03-21T05:17:14.897Z,177407023489701
+"""1000 @ 8pAlpXMD6x"" chooses to  run it twice.",2026-03-21T05:17:14.897Z,177407023489700
+"""nad @ -kxVOncdJw"" chooses to  run it twice.",2026-03-21T05:17:14.840Z,177407023484000
+"Remaining players decide whether to run it twice.",2026-03-21T05:17:13.669Z,177407023366901
+"""param @ 1c6V3eltlj"" folds",2026-03-21T05:17:13.669Z,177407023366900
+"""1000 @ 8pAlpXMD6x"" calls 300",2026-03-21T05:17:12.317Z,177407023231700
+"""nad @ -kxVOncdJw"" raises to 300 and go all in",2026-03-21T05:17:08.408Z,177407022840800
+"""param @ 1c6V3eltlj"" calls 20",2026-03-21T05:17:06.530Z,177407022653000
+"""1000 @ 8pAlpXMD6x"" calls 20",2026-03-21T05:17:05.521Z,177407022552100
+"""nad @ -kxVOncdJw"" posts a big blind of 20",2026-03-21T05:17:04.202Z,177407022420206
+"""param @ 1c6V3eltlj"" posts a small blind of 10",2026-03-21T05:17:04.202Z,177407022420205
+"Your hand is 10♣, 9♦",2026-03-21T05:17:04.202Z,177407022420204
+"Player stacks: #1 ""nad @ -kxVOncdJw"" (300) | #4 ""1000 @ 8pAlpXMD6x"" (2269) | #6 ""param @ 1c6V3eltlj"" (1931)",2026-03-21T05:17:04.202Z,177407022420201
+"-- starting hand #117 (id: ksousb4us0dg)  No Limit Texas Hold'em (dealer: ""1000 @ 8pAlpXMD6x"") --",2026-03-21T05:17:04.202Z,177407022420200
+"-- ending hand #116 --",2026-03-21T05:17:01.245Z,177407022124502
+"""1000 @ 8pAlpXMD6x"" collected 40 from pot",2026-03-21T05:17:01.245Z,177407022124501
+"Uncalled bet of 50 returned to ""1000 @ 8pAlpXMD6x""",2026-03-21T05:17:01.245Z,177407022124500
+"""param @ 1c6V3eltlj"" folds",2026-03-21T05:17:00.398Z,177407022039800
+"""1000 @ 8pAlpXMD6x"" bets 50",2026-03-21T05:16:59.249Z,177407021924900
+"River: 5♥, A♦, J♣, 8♣ [4♦]",2026-03-21T05:16:56.389Z,177407021638900
+"""param @ 1c6V3eltlj"" checks",2026-03-21T05:16:55.525Z,177407021552500
+"""1000 @ 8pAlpXMD6x"" checks",2026-03-21T05:16:54.061Z,177407021406100
+"Turn: 5♥, A♦, J♣ [8♣]",2026-03-21T05:16:53.091Z,177407021309100
+"""param @ 1c6V3eltlj"" checks",2026-03-21T05:16:52.271Z,177407021227100
+"""1000 @ 8pAlpXMD6x"" checks",2026-03-21T05:16:51.241Z,177407021124100
+"Flop:  [5♥, A♦, J♣]",2026-03-21T05:16:49.491Z,177407020949100
+"""param @ 1c6V3eltlj"" checks",2026-03-21T05:16:48.660Z,177407020866000
+"""1000 @ 8pAlpXMD6x"" calls 20",2026-03-21T05:16:46.494Z,177407020649400
+"""nad @ -kxVOncdJw"" folds",2026-03-21T05:16:44.258Z,177407020425800
+"""param @ 1c6V3eltlj"" posts a big blind of 20",2026-03-21T05:16:42.684Z,177407020268406
+"""1000 @ 8pAlpXMD6x"" posts a small blind of 10",2026-03-21T05:16:42.684Z,177407020268405
+"Your hand is K♥, 6♦",2026-03-21T05:16:42.684Z,177407020268404
+"Player stacks: #1 ""nad @ -kxVOncdJw"" (300) | #4 ""1000 @ 8pAlpXMD6x"" (2249) | #6 ""param @ 1c6V3eltlj"" (1951)",2026-03-21T05:16:42.684Z,177407020268401
+"-- starting hand #116 (id: v82wkyxvzp1y)  No Limit Texas Hold'em (dealer: ""nad @ -kxVOncdJw"") --",2026-03-21T05:16:42.684Z,177407020268400
+"-- ending hand #115 --",2026-03-21T05:16:39.782Z,177407019978202
+"""nad @ -kxVOncdJw"" collected 140 from pot",2026-03-21T05:16:39.782Z,177407019978201
+"Uncalled bet of 160 returned to ""nad @ -kxVOncdJw""",2026-03-21T05:16:39.782Z,177407019978200
+"""param @ 1c6V3eltlj"" folds",2026-03-21T05:16:38.972Z,177407019897200
+"""1000 @ 8pAlpXMD6x"" folds",2026-03-21T05:16:37.783Z,177407019778300
+"""nad @ -kxVOncdJw"" raises to 200 and go all in",2026-03-21T05:16:36.067Z,177407019606700
+"""param @ 1c6V3eltlj"" bets 40",2026-03-21T05:16:33.341Z,177407019334100
