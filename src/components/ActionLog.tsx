@@ -83,65 +83,54 @@ export default function ActionLog({ hand, steps, stepIdx, onStepChange }: Props)
     highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [stepIdx])
 
-  const lastStep = stepIdx > 0 ? steps[stepIdx - 1] : null
-  const lastStreetIdx = lastStep ? STREET_ORDER.indexOf(lastStep.street) : -1
-
   const pot = computePot(hand, steps, stepIdx)
 
   return (
     <div className="flex flex-col gap-3 h-full">
       <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Action Log</h3>
-      {stepIdx === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-xs text-gray-600 italic">
-          Press → to start
-        </div>
-      ) : (
-        <div className="flex-1 overflow-y-auto flex flex-col gap-4 pr-1">
-          {STREET_ORDER.map((s, si) => {
-            // Streets after the last revealed street: show nothing
-            if (si > lastStreetIdx) return null
+      <div className="flex-1 overflow-y-auto flex flex-col gap-4 pr-1">
+        {STREET_ORDER.map((s) => {
+          const actions = getStreetActions(hand, s)
+          if (actions.length === 0) return null
 
-            const actions = getStreetActions(hand, s)
-            // For streets before the last: show all actions
-            // For the last street: show up to lastStep.actionIdx (inclusive)
-            const count = si < lastStreetIdx ? actions.length : (lastStep?.actionIdx ?? -1) + 1
-            const shown = actions.slice(0, count)
+          const firstGlobalIdx = steps.findIndex(step => step.street === s)
+          const streetIsAllFuture = firstGlobalIdx >= stepIdx
 
-            if (shown.length === 0) return null
-
-            return (
-              <div key={s}>
-                <div className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1">
-                  {STREET_LABELS[s]}
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  {shown.map((action, i) => {
-                    const isHero = action.player === hand.heroId
-                    const isCurrent = lastStep?.street === s && lastStep.actionIdx === i
-                    const globalIdx = steps.findIndex(step => step.street === s && step.actionIdx === i)
-                    return (
-                      <div
-                        key={i}
-                        ref={isCurrent ? highlightRef : null}
-                        onClick={() => onStepChange(globalIdx + 1)}
-                        className={`text-sm px-2 py-0.5 rounded transition-colors cursor-pointer ${
-                          isCurrent
-                            ? 'bg-emerald-700/60 ring-1 ring-emerald-400 text-emerald-100 font-semibold'
-                            : isHero
-                            ? 'text-emerald-300 bg-emerald-900/30 font-medium hover:bg-emerald-900/50'
-                            : 'text-gray-300 hover:bg-gray-700/50'
-                        }`}
-                      >
-                        {formatAction(action, hand)}
-                      </div>
-                    )
-                  })}
-                </div>
+          return (
+            <div key={s}>
+              <div className={`text-xs font-semibold uppercase tracking-wider mb-1 ${streetIsAllFuture ? 'text-gray-600' : 'text-emerald-400'}`}>
+                {STREET_LABELS[s]}
               </div>
-            )
-          })}
-        </div>
-      )}
+              <div className="flex flex-col gap-0.5">
+                {actions.map((action, i) => {
+                  const globalIdx = steps.findIndex(step => step.street === s && step.actionIdx === i)
+                  const isCurrent = globalIdx === stepIdx - 1
+                  const isFuture = globalIdx >= stepIdx
+                  const isHero = action.player === hand.heroId
+                  return (
+                    <div
+                      key={i}
+                      ref={isCurrent ? highlightRef : null}
+                      onClick={() => onStepChange(globalIdx + 1)}
+                      className={`text-sm px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                        isCurrent
+                          ? 'bg-emerald-700/60 ring-1 ring-emerald-400 text-emerald-100 font-semibold'
+                          : isFuture
+                          ? 'text-gray-600 hover:text-gray-400 hover:bg-gray-700/30'
+                          : isHero
+                          ? 'text-emerald-300 bg-emerald-900/30 font-medium hover:bg-emerald-900/50'
+                          : 'text-gray-300 hover:bg-gray-700/50'
+                      }`}
+                    >
+                      {formatAction(action, hand)}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
       <div className="border-t border-gray-700 pt-2 mt-auto">
         <div className="flex justify-between items-center text-sm">
           <span className="text-gray-400">Pot</span>
