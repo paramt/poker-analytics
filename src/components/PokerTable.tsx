@@ -127,6 +127,18 @@ function computeStackUpToStep(
   return stack
 }
 
+function computePot(hand: Hand, steps: ActionStep[], stepIdx: number): number {
+  let pot = 0
+  for (let i = 0; i < stepIdx; i++) {
+    const { street, actionIdx } = steps[i]
+    const action = getStreetActions(hand, street)[actionIdx]
+    if (!action) continue
+    if (['call', 'bet', 'raise', 'post_sb', 'post_bb'].includes(action.type)) pot += action.amount ?? 0
+    else if (action.type === 'uncalled') pot -= action.amount ?? 0
+  }
+  return pot
+}
+
 // Returns cards shown by a player up to the current step (step-aware)
 function getShownCards(hand: Hand, shortId: string, steps: ActionStep[], stepIdx: number): string[] {
   for (let i = 0; i < stepIdx; i++) {
@@ -169,6 +181,7 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
 
   const foldedPlayers = getFoldedPlayers(hand, steps, stepIdx)
   const boardCards = getVisibleBoardCards(hand.board, boardStreet)
+  const pot = computePot(hand, steps, stepIdx)
 
   return (
     <div className="relative w-full" style={{ paddingBottom: '60%' }}>
@@ -177,14 +190,21 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
         className="absolute inset-0 rounded-[50%] border-4 border-yellow-800"
         style={{ background: 'radial-gradient(ellipse at center, #2d5a27 60%, #1a3a18 100%)' }}
       >
-        {/* Board cards in center */}
-        <div className="absolute inset-0 flex items-center justify-center gap-1.5">
-          {boardCards.length === 0 ? (
-            <span className="text-green-700 text-sm font-medium opacity-60 select-none">
-              Waiting for board
-            </span>
-          ) : (
-            boardCards.map((card, i) => <CardDisplay key={i} card={card} />)
+        {/* Board cards + pot in center */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+          <div className="flex items-center gap-1.5">
+            {boardCards.length === 0 ? (
+              <span className="text-green-700 text-sm font-medium opacity-60 select-none">
+                Waiting for board
+              </span>
+            ) : (
+              boardCards.map((card, i) => <CardDisplay key={i} card={card} />)
+            )}
+          </div>
+          {pot > 0 && (
+            <div className="bg-black/30 rounded-full px-3 py-0.5 text-xs font-bold text-yellow-300 tracking-wide">
+              Pot: {pot}
+            </div>
           )}
         </div>
       </div>
