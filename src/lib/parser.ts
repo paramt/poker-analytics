@@ -129,7 +129,7 @@ function parseAction(line: string): Action | null {
     return { player: m[2].trim(), type: 'collect', amount: parseInt(m[3]) }
   }
   if ((m = RE_ACTION_SHOW.exec(line))) {
-    return { player: m[2].trim(), type: 'show' }
+    return { player: m[2].trim(), type: 'show', cards: parseCards(m[3]) }
   }
 
   return null

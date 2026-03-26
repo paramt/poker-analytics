@@ -8,8 +8,9 @@ interface Props {
 }
 
 function suitColor(card: string): string {
-  if (card.includes('♥') || card.includes('♦')) return 'text-red-400'
-  return 'text-gray-100'
+  if (card.includes('♥') || card.includes('♦')) return 'text-red-500'
+  // Clubs (♣) and Spades (♠) are black suits — use dark text on the light card background
+  return 'text-gray-900'
 }
 
 function CardDisplay({ card, small = false }: { card: string; small?: boolean }) {
@@ -73,6 +74,48 @@ function seatPosition(index: number, total: number): [number, number] {
   return [x, y]
 }
 
+const STREET_ORDER: Street[] = ['preflop', 'flop', 'turn', 'river']
+
+// Compute a player's stack after all actions through the given street.
+// Starts from initial stack and subtracts money committed, adds back uncalled bets and collects.
+function computeStackAfterStreet(
+  hand: Hand,
+  shortId: string,
+  upToStreet: Street,
+): number {
+  let stack = hand.players[shortId].stack
+  const streetsToProcess = STREET_ORDER.slice(0, STREET_ORDER.indexOf(upToStreet) + 1)
+  for (const s of streetsToProcess) {
+    for (const action of getStreetActions(hand, s)) {
+      if (action.player !== shortId) continue
+      if (
+        action.type === 'call' ||
+        action.type === 'bet' ||
+        action.type === 'raise' ||
+        action.type === 'post_sb' ||
+        action.type === 'post_bb'
+      ) {
+        stack -= action.amount ?? 0
+      } else if (action.type === 'uncalled' || action.type === 'collect') {
+        stack += action.amount ?? 0
+      }
+    }
+  }
+  return stack
+}
+
+function getShownCards(hand: Hand, shortId: string): string[] {
+  const allStreets = [hand.preflop, hand.flop, hand.turn, hand.river]
+  for (const actions of allStreets) {
+    for (const action of actions) {
+      if (action.type === 'show' && action.player === shortId && action.cards?.length) {
+        return action.cards
+      }
+    }
+  }
+  return []
+}
+
 export default function PokerTable({ hand, street }: Props) {
   const players = Object.entries(hand.players) // [shortId, { displayName, seat, stack }]
   // Sort by seat number for consistent ordering
@@ -114,6 +157,8 @@ export default function PokerTable({ hand, street }: Props) {
         const isHero = shortId === hand.heroId
         const isFolded = foldedPlayers.has(shortId)
         const pos = hand.seatPositions[shortId]
+        const currentStack = computeStackAfterStreet(hand, shortId, street)
+        const visibleCards = isHero ? hand.holeCards : getShownCards(hand, shortId)
 
         return (
           <div
@@ -147,10 +192,10 @@ export default function PokerTable({ hand, street }: Props) {
                 )}
                 <span className="font-medium truncate max-w-[70px]">{info.displayName}</span>
               </div>
-              <div className="text-gray-300 text-[10px]">{info.stack}</div>
-              {isHero && hand.holeCards.length > 0 && (
+              <div className="text-gray-300 text-[10px]">{currentStack}</div>
+              {visibleCards.length > 0 && (
                 <div className="flex gap-0.5 mt-0.5">
-                  {hand.holeCards.map((card, ci) => (
+                  {visibleCards.map((card, ci) => (
                     <CardDisplay key={ci} card={card} small />
                   ))}
                 </div>

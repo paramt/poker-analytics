@@ -7,6 +7,7 @@ export interface Action {
   type: ActionType
   amount?: number
   allin?: boolean
+  cards?: string[] // for 'show' actions
 }
 
 export interface Hand {
