@@ -92,7 +92,7 @@ export default function UploadScreen() {
         heroDisplayName: heroPlayer?.displayName ?? heroId,
         hands,
         stats,
-        flaggedHands: [],
+        flaggedHands: bigpotFlags,
       }
 
       await saveSession(session)
@@ -104,9 +104,11 @@ export default function UploadScreen() {
         setScanState({ isScanning: true, progress: { completed: 0, total: Math.ceil(hands.length / 50) } })
         scanHands(hands, heroId, apiKey, (progress) => {
           setScanState({ isScanning: true, progress })
-        }).then(({ results: aiResults, partial: aiPartial }) => {
-          setFlaggedHands([...bigpotFlags, ...aiResults])
+        }).then(async ({ results: aiResults, partial: aiPartial }) => {
+          const allFlags = [...bigpotFlags, ...aiResults]
+          setFlaggedHands(allFlags)
           setScanState({ isScanning: false, partial: aiPartial })
+          await saveSession({ ...session, flaggedHands: allFlags })
         }).catch(() => {
           setScanState({ isScanning: false, partial: true })
         })
