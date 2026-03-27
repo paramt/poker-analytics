@@ -119,6 +119,9 @@ function ActionRow({
         {label}{hasAmount ? ':' : ''}
       </span>
       {hasAmount && <span className="text-xs text-gray-200">{action.amount}</span>}
+      {action.type === 'show' && action.cards && action.cards.map((card, i) => (
+        <InlineCard key={i} card={card} />
+      ))}
       {action.allin && (
         <span className="text-[9px] font-bold text-red-400 uppercase">all-in</span>
       )}
