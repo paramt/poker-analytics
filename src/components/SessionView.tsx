@@ -251,9 +251,8 @@ export default function SessionView() {
                 <table className="w-full text-sm min-w-[600px]">
                   <thead>
                     <tr className="border-b border-gray-700 text-xs text-gray-400 uppercase tracking-wide">
-                      <th className="text-left px-4 py-3">Hand #</th>
+                      <th className="text-left px-4 py-3">Hand</th>
                       <th className="text-left px-4 py-3">Position</th>
-                      <th className="text-left px-4 py-3">Hole Cards</th>
                       <th className="text-left px-4 py-3">Board</th>
                       <th className="text-right px-4 py-3">Result</th>
                       <th className="text-left px-4 py-3">Tags</th>
@@ -283,17 +282,17 @@ export default function SessionView() {
                               : 'border-l-2 border-l-transparent'
                           }`}
                         >
-                          <td className="px-4 py-3 font-mono text-gray-300">#{hand.id}</td>
-                          <td className="px-4 py-3 text-gray-300">{position}</td>
                           <td className="px-4 py-3">
-                            {hand.holeCards.length > 0 ? (
-                              <span className="flex gap-0.5">
-                                {hand.holeCards.map((c, i) => <CardInline key={i} card={c} />)}
-                              </span>
-                            ) : (
-                              <span className="text-gray-600">—</span>
-                            )}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-mono text-gray-300">#{hand.id}</span>
+                              {hand.holeCards.length > 0 && (
+                                <span className="flex gap-0.5">
+                                  {hand.holeCards.map((c, i) => <CardInline key={i} card={c} />)}
+                                </span>
+                              )}
+                            </div>
                           </td>
+                          <td className="px-4 py-3 text-gray-300">{position}</td>
                           <td className="px-4 py-3">
                             {flop.length > 0 ? (
                               <span className="flex gap-0.5">

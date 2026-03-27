@@ -204,10 +204,13 @@ export default function ActionLog({ hand, steps, stepIdx, onStepChange }: Props)
     <div className="flex flex-col gap-3 h-full">
       <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Action Log</h3>
       <div className="flex-1 overflow-y-auto flex flex-col gap-1 pr-1">
-        {/* Preflop has no header step — render a static label when there are preflop actions */}
+        {/* Preflop has no header step — render a static label with hero's hole cards */}
         {hand.preflop.length > 0 && (
-          <div className="text-xs font-semibold uppercase tracking-wider px-2 pb-0.5 text-emerald-400">
-            Pre-flop
+          <div className="flex items-center gap-1.5 px-2 pb-0.5 flex-wrap">
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Pre-flop</span>
+            {hand.holeCards.map((card, ci) => (
+              <InlineCard key={ci} card={card} />
+            ))}
           </div>
         )}
 
