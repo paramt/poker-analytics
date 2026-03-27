@@ -87,7 +87,9 @@ function parsePlayerStacks(line: string): PlayerInfo[] {
 // ─── Card parsing ─────────────────────────────────────────────────────────
 
 function parseCards(str: string): string[] {
-  return str.split(',').map(s => s.trim()).filter(Boolean)
+  return str.split(',')
+    .map(s => s.trim().replace(/^T([♠♥♦♣])$/, '10$1'))
+    .filter(Boolean)
 }
 
 // ─── Action parsing ───────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ function rankValue(r: string): number {
   if (r === 'K') return 13
   if (r === 'Q') return 12
   if (r === 'J') return 11
+  if (r === 'T') return 10
   return parseInt(r, 10)
 }
 
@@ -18,7 +19,7 @@ function rankName(r: number): string {
 }
 
 function parseCard(card: string): { rank: number; suit: string } {
-  const m = card.match(/^(\d+|[AKQJ])(.)$/)
+  const m = card.match(/^(\d+|[AKQJT])(.)$/)
   if (!m) return { rank: 0, suit: '' }
   return { rank: rankValue(m[1]), suit: m[2] }
 }

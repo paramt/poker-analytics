@@ -180,4 +180,23 @@ describe('bestHandDescription', () => {
       ).toBe('Straight, Ace-high')
     })
   })
+
+  describe('T-format card normalization (demo CSV uses T not 10)', () => {
+    it('evaluate5 handles T♣ as ten', () => {
+      // T♣ should parse as rank 10
+      expect(evaluate5(['T♣', 'J♠', '9♥', '8♦', '7♣']).description).toBe('Straight, Jack-high')
+    })
+
+    it('bestHandDescription handles T in hole cards', () => {
+      expect(
+        bestHandDescription(['T♠', 'J♥'], ['Q♦', 'K♣', 'A♥'])
+      ).toBe('Straight, Ace-high')
+    })
+
+    it('bestHandDescription handles T in board cards', () => {
+      expect(
+        bestHandDescription(['8♥', '9♦'], ['T♣', 'J♠', '7♥', 'A♦', '3♣'])
+      ).toBe('Straight, Jack-high')
+    })
+  })
 })
