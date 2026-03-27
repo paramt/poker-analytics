@@ -205,7 +205,7 @@ export default function HandReplayer({ hand, hideBack = false }: Props) {
       </div>
 
       {/* Main content */}
-      <div className="flex gap-4 flex-1 min-h-0">
+      <div className="flex flex-col sm:flex-row gap-4 flex-1 min-h-0">
         {/* Table + controls — hidden on mobile, visible on sm+ */}
         <div className="hidden sm:flex flex-col flex-1 min-w-0 gap-2">
           <PokerTable hand={hand} steps={steps} stepIdx={stepIdx} boardStreet={boardStreet} />
