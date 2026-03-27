@@ -207,6 +207,59 @@ describe('parseCSV', () => {
   })
 })
 
+describe('show actions', () => {
+  it('parses villain show action and captures cards', () => {
+    const entries = [
+      { entry: '-- starting hand #1 (id: abc)  No Limit Texas Hold\'em (dealer: "param @ 1c6V3eltlj") --', order: 1 },
+      { entry: 'Player stacks: #1 "param @ 1c6V3eltlj" (1000) | #2 "villain @ 8pAlpXMD6x" (1000)', order: 2 },
+      { entry: 'Your hand is A♠, K♦', order: 3 },
+      { entry: '"param @ 1c6V3eltlj" bets 1000 and go all in', order: 4 },
+      { entry: '"villain @ 8pAlpXMD6x" calls 1000', order: 5 },
+      { entry: '"villain @ 8pAlpXMD6x" shows a J♥, J♦.', order: 6 },
+      { entry: 'Flop:  [4♦, K♣, A♠]', order: 7 },
+      { entry: 'Turn: 4♦, K♣, A♠ [2♥]', order: 8 },
+      { entry: 'River: 4♦, K♣, A♠, 2♥ [7♣]', order: 9 },
+      { entry: '"param @ 1c6V3eltlj" collected 2000 from pot', order: 10 },
+      { entry: '-- ending hand #1 --', order: 11 },
+    ]
+    const csv = buildCSV(entries)
+    const [hand] = parseCSV(csv, HERO_ID)
+    const showAction = hand.preflop.find(a => a.type === 'show')
+    expect(showAction).toBeDefined()
+    expect(showAction?.cards).toEqual(['J♥', 'J♦'])
+    expect(showAction?.player).toBe(VILLAIN_ID)
+  })
+
+  it('parses hero show action on the river', () => {
+    const entries = [
+      { entry: '-- starting hand #1 (id: abc)  No Limit Texas Hold\'em (dealer: "villain @ 8pAlpXMD6x") --', order: 1 },
+      { entry: 'Player stacks: #1 "param @ 1c6V3eltlj" (1000) | #2 "villain @ 8pAlpXMD6x" (1000)', order: 2 },
+      { entry: 'Your hand is A♠, K♦', order: 3 },
+      { entry: '"villain @ 8pAlpXMD6x" posts a small blind of 10', order: 4 },
+      { entry: '"param @ 1c6V3eltlj" posts a big blind of 20', order: 5 },
+      { entry: '"villain @ 8pAlpXMD6x" calls 20', order: 6 },
+      { entry: 'Flop:  [4♦, K♣, A♠]', order: 7 },
+      { entry: '"villain @ 8pAlpXMD6x" checks', order: 8 },
+      { entry: '"param @ 1c6V3eltlj" checks', order: 9 },
+      { entry: 'Turn: 4♦, K♣, A♠ [2♥]', order: 10 },
+      { entry: '"villain @ 8pAlpXMD6x" checks', order: 11 },
+      { entry: '"param @ 1c6V3eltlj" checks', order: 12 },
+      { entry: 'River: 4♦, K♣, A♠, 2♥ [7♣]', order: 13 },
+      { entry: '"villain @ 8pAlpXMD6x" checks', order: 14 },
+      { entry: '"param @ 1c6V3eltlj" bets 50', order: 15 },
+      { entry: '"villain @ 8pAlpXMD6x" calls 50', order: 16 },
+      { entry: '"villain @ 8pAlpXMD6x" shows a Q♠, Q♥.', order: 17 },
+      { entry: '"param @ 1c6V3eltlj" collected 140 from pot', order: 18 },
+      { entry: '-- ending hand #1 --', order: 19 },
+    ]
+    const csv = buildCSV(entries)
+    const [hand] = parseCSV(csv, HERO_ID)
+    const showAction = hand.river.find(a => a.type === 'show')
+    expect(showAction).toBeDefined()
+    expect(showAction?.cards).toEqual(['Q♠', 'Q♥'])
+  })
+})
+
 describe('extractAllPlayers', () => {
   it('extracts all unique players sorted by hand count', () => {
     const csv = buildCSV(SIMPLE_HAND_ENTRIES)
