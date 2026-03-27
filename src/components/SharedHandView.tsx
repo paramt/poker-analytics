@@ -189,8 +189,9 @@ export default function SharedHandView() {
         </div>
 
         {/* Main content */}
-        <div className="flex gap-4 min-h-0">
-          <div className="flex flex-col flex-1 min-w-0 gap-2">
+        <div className="flex flex-col sm:flex-row gap-4 min-h-0">
+          {/* Table + controls — hidden on mobile, visible on sm+ */}
+          <div className="hidden sm:flex flex-col flex-1 min-w-0 gap-2">
             <PokerTable hand={hand} steps={steps} stepIdx={stepIdx} boardStreet={boardStreet} />
 
             {/* Step controls */}
@@ -234,7 +235,50 @@ export default function SharedHandView() {
               </button>
             </div>
           </div>
-          <div className="w-56 shrink-0 bg-gray-800 rounded-xl p-4">
+
+          {/* Step controls for mobile — shown only when table is hidden */}
+          <div className="sm:hidden flex items-center justify-center gap-4">
+            <button
+              onClick={goPrev}
+              disabled={stepIdx === 0}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              Prev
+            </button>
+            <span className="text-xs text-gray-500 w-20 text-center">
+              {stepIdx === 0 ? 'Start' : stepIdx === totalSteps ? 'End' : `${stepIdx} / ${totalSteps}`}
+            </span>
+            <button
+              onClick={goNext}
+              disabled={stepIdx === totalSteps}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Action log — full width on mobile, fixed sidebar on sm+ */}
+          <div className="flex-1 sm:flex-none sm:w-56 shrink-0 bg-gray-800 rounded-xl p-4">
             <ActionLog hand={hand} steps={steps} stepIdx={stepIdx} onStepChange={setStepIdx} />
           </div>
         </div>
