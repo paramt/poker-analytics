@@ -21,8 +21,8 @@ const STREET_LABELS: Record<Street, string> = {
 }
 
 function suitColor(card: string): string {
-  if (card.includes('♥') || card.includes('♦')) return 'text-red-400'
-  return 'text-gray-100'
+  if (card.includes('♥') || card.includes('♦')) return 'text-red-500'
+  return 'text-gray-900'
 }
 
 function isStreetAvailable(hand: Hand, s: Street): boolean {
