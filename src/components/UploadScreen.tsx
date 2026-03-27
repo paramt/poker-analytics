@@ -291,7 +291,7 @@ export default function UploadScreen() {
           {isLoadingDemo ? 'Loading demo…' : 'Try a sample session →'}
         </button>
         <p className="text-center text-xs text-gray-600 -mt-3">
-          Pre-loaded hands with Param, Nadish, Raghav, Gagan, Justin &amp; Anujan — no API key needed
+          Pre-loaded sample session — no API key needed
         </p>
 
         {/* Recent sessions */}
