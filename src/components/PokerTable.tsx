@@ -197,13 +197,15 @@ function betChipPosition(seatX: number, seatY: number): [number, number] {
   return [x, y]
 }
 
-// Returns cards shown by a player up to the current step (step-aware)
-function getShownCards(hand: Hand, shortId: string, steps: ActionStep[], stepIdx: number): string[] {
-  for (let i = 0; i < stepIdx; i++) {
-    const { street, actionIdx } = steps[i]
-    const action = getStreetActions(hand, street)[actionIdx]
-    if (action?.type === 'show' && action.player === shortId && action.cards?.length) {
-      return action.cards
+// Returns all cards shown by a player anywhere in the hand log.
+// Villain hands are shown whenever they exist in the log — since this is a
+// hand history review, all showdown cards are always visible.
+function getShownCards(hand: Hand, shortId: string): string[] {
+  for (const s of STREET_ORDER) {
+    for (const action of getStreetActions(hand, s)) {
+      if (action.type === 'show' && action.player === shortId && action.cards?.length) {
+        return action.cards
+      }
     }
   }
   return []
@@ -276,7 +278,7 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
         const isFlashing = flashPlayer === shortId
         const pos = hand.seatPositions[shortId]
         const currentStack = computeStackUpToStep(hand, shortId, steps, stepIdx)
-        const visibleCards = isHero ? hand.holeCards : getShownCards(hand, shortId, steps, stepIdx)
+        const visibleCards = isHero ? hand.holeCards : getShownCards(hand, shortId)
         const handDesc = visibleCards.length > 0 ? bestHandDescription(visibleCards, boardCards) : null
         const betAmount = currentBets.get(shortId) ?? 0
 
