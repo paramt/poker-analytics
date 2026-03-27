@@ -129,12 +129,27 @@ function computeStackUpToStep(
 
 function computePot(hand: Hand, steps: ActionStep[], stepIdx: number): number {
   let pot = 0
+  let currentStreet: Street | null = null
+  const streetCommitted = new Map<string, number>()
+
   for (let i = 0; i < stepIdx; i++) {
     const { street, actionIdx } = steps[i]
     const action = getStreetActions(hand, street)[actionIdx]
     if (!action) continue
-    if (['call', 'bet', 'raise', 'post_sb', 'post_bb'].includes(action.type)) pot += action.amount ?? 0
-    else if (action.type === 'uncalled') pot -= action.amount ?? 0
+
+    if (street !== currentStreet) {
+      currentStreet = street
+      streetCommitted.clear()
+    }
+
+    if (['call', 'bet', 'raise', 'post_sb', 'post_bb'].includes(action.type)) {
+      const committed = streetCommitted.get(action.player) ?? 0
+      const delta = Math.max(0, (action.amount ?? 0) - committed)
+      pot += delta
+      streetCommitted.set(action.player, action.amount ?? 0)
+    } else if (action.type === 'uncalled') {
+      pot -= action.amount ?? 0
+    }
   }
   return pot
 }
