@@ -10,6 +10,7 @@ type Street = 'preflop' | 'flop' | 'turn' | 'river'
 interface ActionStep {
   street: Street
   actionIdx: number
+  isHeader?: boolean
 }
 
 const STREETS: Street[] = ['preflop', 'flop', 'turn', 'river']
@@ -44,8 +45,18 @@ function getStreetActions(hand: Hand, s: Street) {
 
 function buildSteps(hand: Hand): ActionStep[] {
   const steps: ActionStep[] = []
-  for (const street of STREETS) {
-    getStreetActions(hand, street).forEach((_, idx) => steps.push({ street, actionIdx: idx }))
+  for (const s of STREETS) {
+    const actions = getStreetActions(hand, s)
+    if (s !== 'preflop') {
+      const hasStreet =
+        s === 'flop' ? hand.board.length >= 3
+        : s === 'turn' ? hand.board.length >= 4
+        : hand.board.length >= 5
+      if (hasStreet || actions.length > 0) {
+        steps.push({ street: s, actionIdx: -1, isHeader: true })
+      }
+    }
+    actions.forEach((_, idx) => steps.push({ street: s, actionIdx: idx }))
   }
   return steps
 }
