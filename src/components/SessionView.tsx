@@ -285,10 +285,12 @@ export default function SessionView() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-mono text-gray-300">#{hand.id}</span>
-                              {hand.holeCards.length > 0 && (
+                              {hand.holeCards.length > 0 ? (
                                 <span className="flex gap-0.5">
                                   {hand.holeCards.map((c, i) => <CardInline key={i} card={c} />)}
                                 </span>
+                              ) : (
+                                <span className="text-gray-600 text-xs">no cards</span>
                               )}
                             </div>
                           </td>

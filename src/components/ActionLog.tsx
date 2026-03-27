@@ -208,9 +208,11 @@ export default function ActionLog({ hand, steps, stepIdx, onStepChange }: Props)
         {hand.preflop.length > 0 && (
           <div className="flex items-center gap-1.5 px-2 pb-0.5 flex-wrap">
             <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Pre-flop</span>
-            {hand.holeCards.map((card, ci) => (
-              <InlineCard key={ci} card={card} />
-            ))}
+            {hand.holeCards.length > 0 ? (
+              hand.holeCards.map((card, ci) => <InlineCard key={ci} card={card} />)
+            ) : (
+              <span className="text-[10px] text-gray-600">no cards</span>
+            )}
           </div>
         )}
 
