@@ -99,11 +99,19 @@ function ActionRow({
   )
 }
 
-// Compute pot based on actions revealed up to stepIdx using per-player
-// street deltas (PokerNow amounts are total street commitment, not incremental)
+// Compute pot + current street bets based on actions revealed up to stepIdx.
+// PokerNow amounts are total street commitment, not incremental — we track
+// per-player deltas to avoid double-counting raises.
+// Returns pot (completed streets) + currentBets (active street), summed for display.
 function computePot(hand: Hand, steps: ActionStep[], stepIdx: number): number {
+  // Derive the current board street from the last revealed step
+  const boardStreet: Street =
+    stepIdx > 0 ? steps[stepIdx - 1].street : (steps[stepIdx]?.street ?? 'preflop')
+  const boardStreetIdx = STREET_ORDER.indexOf(boardStreet)
+
   let pot = 0
-  let currentStreet: Street | null = null
+  const currentBets = new Map<string, number>()
+  let trackedStreet: Street | null = null
   const streetCommitted = new Map<string, number>()
 
   for (let i = 0; i < stepIdx; i++) {
@@ -111,21 +119,46 @@ function computePot(hand: Hand, steps: ActionStep[], stepIdx: number): number {
     const action = getStreetActions(hand, street)[actionIdx]
     if (!action) continue
 
-    if (street !== currentStreet) {
-      currentStreet = street
+    const stepStreetIdx = STREET_ORDER.indexOf(street)
+
+    if (street !== trackedStreet) {
+      trackedStreet = street
       streetCommitted.clear()
     }
 
     if (['call', 'bet', 'raise', 'post_sb', 'post_bb'].includes(action.type)) {
       const committed = streetCommitted.get(action.player) ?? 0
       const delta = Math.max(0, (action.amount ?? 0) - committed)
-      pot += delta
       streetCommitted.set(action.player, action.amount ?? 0)
+
+      if (stepStreetIdx < boardStreetIdx) {
+        pot += delta
+      } else {
+        currentBets.set(action.player, action.amount ?? 0)
+      }
     } else if (action.type === 'uncalled') {
-      pot -= action.amount ?? 0
+      const amt = action.amount ?? 0
+      if (stepStreetIdx < boardStreetIdx) {
+        pot -= amt
+      } else {
+        const cur = currentBets.get(action.player) ?? 0
+        const newBet = Math.max(0, cur - amt)
+        if (newBet === 0) currentBets.delete(action.player)
+        else currentBets.set(action.player, newBet)
+      }
+    } else if (action.type === 'collect') {
+      if (stepStreetIdx >= boardStreetIdx) {
+        for (const v of currentBets.values()) pot += v
+        currentBets.clear()
+        streetCommitted.clear()
+      }
     }
   }
-  return pot
+
+  // Sum completed-street pot with active bets for the footer display
+  let total = pot
+  for (const v of currentBets.values()) total += v
+  return total
 }
 
 export default function ActionLog({ hand, steps, stepIdx, onStepChange }: Props) {

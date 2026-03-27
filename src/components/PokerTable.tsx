@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import type { Hand } from '../types'
 import { bestHandDescription } from '../lib/handEval'
 
@@ -127,9 +127,16 @@ function computeStackUpToStep(
   return stack
 }
 
-function computePot(hand: Hand, steps: ActionStep[], stepIdx: number): number {
+function computePotAndBets(
+  hand: Hand,
+  steps: ActionStep[],
+  stepIdx: number,
+  boardStreet: Street,
+): { pot: number; currentBets: Map<string, number> } {
+  const boardStreetIdx = STREET_ORDER.indexOf(boardStreet)
   let pot = 0
-  let currentStreet: Street | null = null
+  const currentBets = new Map<string, number>()
+  let trackedStreet: Street | null = null
   const streetCommitted = new Map<string, number>()
 
   for (let i = 0; i < stepIdx; i++) {
@@ -137,21 +144,56 @@ function computePot(hand: Hand, steps: ActionStep[], stepIdx: number): number {
     const action = getStreetActions(hand, street)[actionIdx]
     if (!action) continue
 
-    if (street !== currentStreet) {
-      currentStreet = street
+    const stepStreetIdx = STREET_ORDER.indexOf(street)
+
+    if (street !== trackedStreet) {
+      trackedStreet = street
       streetCommitted.clear()
     }
 
     if (['call', 'bet', 'raise', 'post_sb', 'post_bb'].includes(action.type)) {
       const committed = streetCommitted.get(action.player) ?? 0
       const delta = Math.max(0, (action.amount ?? 0) - committed)
-      pot += delta
       streetCommitted.set(action.player, action.amount ?? 0)
+
+      if (stepStreetIdx < boardStreetIdx) {
+        // Past street: chips already swept into pot
+        pot += delta
+      } else {
+        // Current street: show in front of player
+        currentBets.set(action.player, action.amount ?? 0)
+      }
     } else if (action.type === 'uncalled') {
-      pot -= action.amount ?? 0
+      const amt = action.amount ?? 0
+      if (stepStreetIdx < boardStreetIdx) {
+        pot -= amt
+      } else {
+        // Reduce this player's current bet
+        const cur = currentBets.get(action.player) ?? 0
+        const newBet = Math.max(0, cur - amt)
+        if (newBet === 0) currentBets.delete(action.player)
+        else currentBets.set(action.player, newBet)
+      }
+    } else if (action.type === 'collect') {
+      // Sweep all current bets into pot (showdown/end of hand)
+      if (stepStreetIdx >= boardStreetIdx) {
+        for (const v of currentBets.values()) pot += v
+        currentBets.clear()
+        streetCommitted.clear()
+      }
     }
   }
-  return pot
+
+  return { pot, currentBets }
+}
+
+function betChipPosition(seatX: number, seatY: number): [number, number] {
+  // 45% toward center from seat
+  const cx = 50
+  const cy = 50
+  const x = seatX + (cx - seatX) * 0.45
+  const y = seatY + (cy - seatY) * 0.45
+  return [x, y]
 }
 
 // Returns cards shown by a player up to the current step (step-aware)
@@ -196,7 +238,7 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
 
   const foldedPlayers = getFoldedPlayers(hand, steps, stepIdx)
   const boardCards = getVisibleBoardCards(hand.board, boardStreet)
-  const pot = computePot(hand, steps, stepIdx)
+  const { pot, currentBets } = computePotAndBets(hand, steps, stepIdx, boardStreet)
 
   return (
     <div className="relative w-full" style={{ paddingBottom: '60%' }}>
@@ -227,6 +269,7 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
       {/* Seats */}
       {rotated.map(([shortId, info], i) => {
         const [x, y] = seatPosition(i, rotated.length)
+        const [betX, betY] = betChipPosition(x, y)
         const isHero = shortId === hand.heroId
         const isFolded = foldedPlayers.has(shortId)
         const isFlashing = flashPlayer === shortId
@@ -234,61 +277,78 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
         const currentStack = computeStackUpToStep(hand, shortId, steps, stepIdx)
         const visibleCards = isHero ? hand.holeCards : getShownCards(hand, shortId, steps, stepIdx)
         const handDesc = visibleCards.length > 0 ? bestHandDescription(visibleCards, boardCards) : null
+        const betAmount = currentBets.get(shortId) ?? 0
 
         return (
-          <div
-            key={shortId}
-            className="absolute"
-            style={{
-              left: `${x}%`,
-              top: `${y}%`,
-              transform: 'translate(-50%, -50%)',
-              zIndex: 10,
-            }}
-          >
+          <React.Fragment key={shortId}>
             <div
-              className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg text-xs border transition-all duration-300 ${
-                isFolded ? 'opacity-40' : 'opacity-100'
-              } ${
-                isHero
-                  ? 'bg-emerald-700 border-emerald-400 text-white shadow-lg shadow-emerald-900'
-                  : 'bg-gray-800 border-gray-600 text-gray-100'
-              } ${
-                isFlashing ? 'ring-2 ring-yellow-300 shadow-yellow-400/40 shadow-lg' : ''
-              }`}
+              className="absolute"
+              style={{
+                left: `${x}%`,
+                top: `${y}%`,
+                transform: 'translate(-50%, -50%)',
+                zIndex: 10,
+              }}
             >
-              <div className="flex items-center gap-1">
-                {pos && (
-                  <span
-                    className={`font-bold text-[10px] px-1 rounded ${
-                      isHero ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-emerald-400'
-                    }`}
-                  >
-                    {pos}
-                  </span>
-                )}
-                <span className="font-medium truncate max-w-[70px]">{info.displayName}</span>
-              </div>
-              <div className="text-gray-300 text-[10px]">{currentStack}</div>
-              {visibleCards.length > 0 && (
-                <div className="flex flex-col items-center gap-0.5 mt-0.5">
-                  <div className="flex gap-0.5">
-                    {visibleCards.map((card, ci) => (
-                      <CardDisplay key={ci} card={card} small />
-                    ))}
-                  </div>
-                  {handDesc && (
-                    <span className={`text-[10px] font-medium ${isHero ? 'text-emerald-200' : 'text-yellow-300'}`}>
-                      {handDesc}
+              <div
+                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg text-xs border transition-all duration-300 ${
+                  isFolded ? 'opacity-40' : 'opacity-100'
+                } ${
+                  isHero
+                    ? 'bg-emerald-700 border-emerald-400 text-white shadow-lg shadow-emerald-900'
+                    : 'bg-gray-800 border-gray-600 text-gray-100'
+                } ${
+                  isFlashing ? 'ring-2 ring-yellow-300 shadow-yellow-400/40 shadow-lg' : ''
+                }`}
+              >
+                <div className="flex items-center gap-1">
+                  {pos && (
+                    <span
+                      className={`font-bold text-[10px] px-1 rounded ${
+                        isHero ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-emerald-400'
+                      }`}
+                    >
+                      {pos}
                     </span>
                   )}
+                  <span className="font-medium truncate max-w-[70px]">{info.displayName}</span>
                 </div>
-              )}
-              {isFolded && (
-                <span className="text-[10px] text-gray-400 italic">folded</span>
-              )}
+                <div className="text-gray-300 text-[10px]">{currentStack}</div>
+                {visibleCards.length > 0 && (
+                  <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                    <div className="flex gap-0.5">
+                      {visibleCards.map((card, ci) => (
+                        <CardDisplay key={ci} card={card} small />
+                      ))}
+                    </div>
+                    {handDesc && (
+                      <span className={`text-[10px] font-medium ${isHero ? 'text-emerald-200' : 'text-yellow-300'}`}>
+                        {handDesc}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {isFolded && (
+                  <span className="text-[10px] text-gray-400 italic">folded</span>
+                )}
+              </div>
             </div>
-          </div>
+            {betAmount > 0 && (
+              <div
+                className="absolute"
+                style={{
+                  left: `${betX}%`,
+                  top: `${betY}%`,
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 9,
+                }}
+              >
+                <div className="bg-yellow-400 text-gray-900 text-[10px] font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-2 border-yellow-600">
+                  {betAmount}
+                </div>
+              </div>
+            )}
+          </React.Fragment>
         )
       })}
     </div>
