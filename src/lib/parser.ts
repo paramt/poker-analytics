@@ -199,6 +199,7 @@ export function parseCSV(csvText: string, heroId: string): Hand[] {
   let currentHandLines: string[] = []
   let currentTimestamp = ''
   let inHand = false
+  let afterEndMarker = false // show actions can appear after -- ending hand -- in PokerNow logs
 
   function flushHand() {
     if (currentHandLines.length === 0) return
@@ -213,15 +214,17 @@ export function parseCSV(csvText: string, heroId: string): Hand[] {
     if (RE_HAND_START.test(entry)) {
       flushHand()
       inHand = true
+      afterEndMarker = false
       currentTimestamp = row.at
       currentHandLines = [entry]
     } else if (RE_HAND_END.test(entry)) {
       if (inHand) {
         currentHandLines.push(entry)
-        flushHand()
         inHand = false
+        afterEndMarker = true
+        // Don't flush yet — show actions may appear after the ending marker
       }
-    } else if (inHand) {
+    } else if (inHand || afterEndMarker) {
       currentHandLines.push(entry)
     }
   }

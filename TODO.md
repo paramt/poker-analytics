@@ -1,7 +1,7 @@
 # TODO
 
 ## Bugs
-- [ ] Villain cards sometimes don't show on the table / action log (show actions not always rendering)
+- [x] Villain cards sometimes don't show on the table / action log (show actions not always rendering)
 
 ## Features
 - [ ] Improve LLM classifier (better prompts / tagging accuracy)
