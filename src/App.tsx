@@ -29,7 +29,11 @@ function HandPage() {
     })
   }, [id, handId])
 
-  const hand = session?.hands.find(h => String(h.id) === handId)
+  const hands = session?.hands ?? []
+  const handIdx = hands.findIndex(h => String(h.id) === handId)
+  const hand = handIdx >= 0 ? hands[handIdx] : undefined
+  const prevHand = handIdx > 0 ? hands[handIdx - 1] : undefined
+  const nextHand = handIdx >= 0 && handIdx < hands.length - 1 ? hands[handIdx + 1] : undefined
 
   if (loading) return <Spinner />
   if (missing || !hand) return <NotFound message="Hand not found." backTo={`/session/${id}`} />
@@ -37,7 +41,11 @@ function HandPage() {
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-6">
       <div className="max-w-5xl mx-auto">
-        <HandReplayer hand={hand} />
+        <HandReplayer
+          hand={hand}
+          prevHandId={prevHand ? `/session/${id}/hand/${prevHand.id}` : undefined}
+          nextHandId={nextHand ? `/session/${id}/hand/${nextHand.id}` : undefined}
+        />
       </div>
     </div>
   )

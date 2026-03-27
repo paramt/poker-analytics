@@ -75,9 +75,11 @@ const TAG_COLORS: Record<string, string> = {
 interface Props {
   hand: Hand
   hideBack?: boolean
+  prevHandId?: string
+  nextHandId?: string
 }
 
-export default function HandReplayer({ hand, hideBack = false }: Props) {
+export default function HandReplayer({ hand, hideBack = false, prevHandId, nextHandId }: Props) {
   const { flaggedHands } = useStore()
   const flaggedData = flaggedHands.find((f) => f.handId === hand.id)
 
@@ -141,6 +143,28 @@ export default function HandReplayer({ hand, hideBack = false }: Props) {
               </svg>
               Back
             </button>
+          )}
+          {(prevHandId || nextHandId) && (
+            <div className="flex items-center gap-1">
+              <a
+                href={prevHandId ?? '#'}
+                aria-disabled={!prevHandId}
+                className={`flex items-center px-2 py-1 rounded text-sm transition-colors ${prevHandId ? 'text-gray-400 hover:text-gray-100 hover:bg-gray-700' : 'text-gray-700 pointer-events-none'}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </a>
+              <a
+                href={nextHandId ?? '#'}
+                aria-disabled={!nextHandId}
+                className={`flex items-center px-2 py-1 rounded text-sm transition-colors ${nextHandId ? 'text-gray-400 hover:text-gray-100 hover:bg-gray-700' : 'text-gray-700 pointer-events-none'}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </a>
+            </div>
           )}
           <h2 className="text-lg font-bold text-gray-100">
             Hand #{hand.id}
