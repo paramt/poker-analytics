@@ -42,7 +42,7 @@ interface HandResult {
   description: string
 }
 
-function evaluate5(cards: string[]): HandResult {
+export function evaluate5(cards: string[]): HandResult {
   const parsed = cards.map(parseCard)
   const ranks = parsed.map(c => c.rank).sort((a, b) => b - a)
   const suits = parsed.map(c => c.suit)
