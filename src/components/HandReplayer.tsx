@@ -75,11 +75,12 @@ const TAG_COLORS: Record<string, string> = {
 interface Props {
   hand: Hand
   hideBack?: boolean
+  backHref?: string
   prevHandId?: string
   nextHandId?: string
 }
 
-export default function HandReplayer({ hand, hideBack = false, prevHandId, nextHandId }: Props) {
+export default function HandReplayer({ hand, hideBack = false, backHref, prevHandId, nextHandId }: Props) {
   const { flaggedHands } = useStore()
   const flaggedData = flaggedHands.find((f) => f.handId === hand.id)
 
@@ -125,10 +126,11 @@ export default function HandReplayer({ hand, hideBack = false, prevHandId, nextH
     <div className="flex flex-col gap-4 h-full">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           {!hideBack && (
-            <button
-              onClick={() => window.history.back()}
+            <a
+              href={backHref ?? '#'}
+              onClick={backHref ? undefined : (e) => { e.preventDefault(); window.history.back() }}
               className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-100 transition-colors"
             >
               <svg
@@ -142,7 +144,7 @@ export default function HandReplayer({ hand, hideBack = false, prevHandId, nextH
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
               Back
-            </button>
+            </a>
           )}
           {(prevHandId || nextHandId) && (
             <div className="flex items-center gap-1">
@@ -166,26 +168,28 @@ export default function HandReplayer({ hand, hideBack = false, prevHandId, nextH
               </a>
             </div>
           )}
-          <h2 className="text-lg font-bold text-gray-100">
-            Hand #{hand.id}
-          </h2>
-          {hand.holeCards.length > 0 && (
-            <div className="flex gap-1 items-center">
-              {hand.holeCards.map((card, i) => {
-                const parts = card.match(/^(\d+|[AKQJ])(.*)$/)
-                const rank = parts ? parts[1] : card
-                const suit = parts ? parts[2] : ''
-                return (
-                  <span
-                    key={i}
-                    className="inline-flex flex-col items-center bg-gray-100 text-gray-900 rounded px-1.5 py-0.5 text-sm font-bold border border-gray-300"
-                  >
-                    <span className={suitColor(card)}>{rank}{suit}</span>
-                  </span>
-                )
-              })}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-gray-100">
+              Hand #{hand.id}
+            </h2>
+            {hand.holeCards.length > 0 && (
+              <div className="flex gap-1 items-center">
+                {hand.holeCards.map((card, i) => {
+                  const parts = card.match(/^(\d+|[AKQJ])(.*)$/)
+                  const rank = parts ? parts[1] : card
+                  const suit = parts ? parts[2] : ''
+                  return (
+                    <span
+                      key={i}
+                      className="inline-flex flex-col items-center bg-gray-100 text-gray-900 rounded px-1.5 py-0.5 text-sm font-bold border border-gray-300"
+                    >
+                      <span className={suitColor(card)}>{rank}{suit}</span>
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
         <ShareButton hand={hand} />
       </div>

@@ -43,6 +43,7 @@ function HandPage() {
       <div className="max-w-5xl mx-auto">
         <HandReplayer
           hand={hand}
+          backHref={`/session/${id}`}
           prevHandId={prevHand ? `/session/${id}/hand/${prevHand.id}` : undefined}
           nextHandId={nextHand ? `/session/${id}/hand/${nextHand.id}` : undefined}
         />
