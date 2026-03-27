@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import type { Hand } from '../types'
 import { bestHandDescription } from '../lib/handEval'
+import { calculateEquity } from '../lib/equity'
 
 type Street = 'preflop' | 'flop' | 'turn' | 'river'
 
@@ -243,6 +244,16 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
   const boardCards = getVisibleBoardCards(hand.board, boardStreet)
   const { pot, currentBets } = computePotAndBets(hand, steps, stepIdx, boardStreet)
 
+  const villainCardsList = rotated
+    .filter(([shortId]) => shortId !== hand.heroId)
+    .map(([shortId]) => getShownCards(hand, shortId))
+    .filter(cards => cards.length >= 2)
+
+  const equity =
+    hand.holeCards.length >= 2 && villainCardsList.length > 0
+      ? calculateEquity(hand.holeCards, villainCardsList, boardCards)
+      : null
+
   return (
     <div className="relative w-full" style={{ paddingBottom: '60%' }}>
       {/* Table felt */}
@@ -264,6 +275,12 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
           {pot > 0 && (
             <div className="bg-black/30 rounded-full px-3 py-0.5 text-xs font-bold text-yellow-300 tracking-wide">
               Pot: {pot}
+            </div>
+          )}
+          {equity && (
+            <div className="bg-black/30 rounded-full px-3 py-0.5 text-xs font-bold tracking-wide">
+              <span className="text-emerald-400">{equity.win.toFixed(0)}%</span>
+              {equity.tie > 0.5 && <span className="text-gray-400"> · {equity.tie.toFixed(0)}% tie</span>}
             </div>
           )}
         </div>
