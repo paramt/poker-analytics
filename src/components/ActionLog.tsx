@@ -17,6 +17,32 @@ interface Props {
 }
 
 const STREET_ORDER: Street[] = ['preflop', 'flop', 'turn', 'river']
+
+function getBoardCardsForStreet(board: string[], street: Street): string[] {
+  switch (street) {
+    case 'preflop': return []
+    case 'flop': return board.slice(0, 3)
+    case 'turn': return board.slice(3, 4)
+    case 'river': return board.slice(4, 5)
+  }
+}
+
+function suitColor(card: string): string {
+  if (card.includes('♥') || card.includes('♦')) return 'text-red-500'
+  return 'text-gray-900'
+}
+
+function InlineCard({ card }: { card: string }) {
+  const parts = card.match(/^(\d+|[AKQJ])(.)$/)
+  const rank = parts ? parts[1] : card
+  const suit = parts ? parts[2] : ''
+  return (
+    <span className="inline-flex items-center justify-center bg-gray-100 rounded px-1 h-5 text-[10px] font-bold border border-gray-300 leading-none">
+      <span className={suitColor(card)}>{rank}{suit}</span>
+    </span>
+  )
+}
+
 const STREET_LABELS: Record<Street, string> = {
   preflop: 'Pre-flop',
   flop: 'Flop',
@@ -186,6 +212,7 @@ export default function ActionLog({ hand, steps, stepIdx, onStepChange }: Props)
           if (step.isHeader) {
             const isCurrent = globalIdx === stepIdx - 1
             const isFuture = globalIdx >= stepIdx
+            const streetCards = getBoardCardsForStreet(hand.board, step.street)
             return (
               <div
                 key={`header-${step.street}`}
@@ -199,11 +226,16 @@ export default function ActionLog({ hand, steps, stepIdx, onStepChange }: Props)
                     : 'hover:bg-gray-700/50'
                 }`}
               >
-                <span className={`text-xs font-semibold uppercase tracking-wider ${
-                  isFuture ? 'text-gray-600' : 'text-emerald-400'
-                }`}>
-                  {STREET_LABELS[step.street]}
-                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className={`text-xs font-semibold uppercase tracking-wider ${
+                    isFuture ? 'text-gray-600' : 'text-emerald-400'
+                  }`}>
+                    {STREET_LABELS[step.street]}
+                  </span>
+                  {!isFuture && streetCards.map((card, ci) => (
+                    <InlineCard key={ci} card={card} />
+                  ))}
+                </div>
               </div>
             )
           }
