@@ -18,6 +18,7 @@ const STREET_LABELS: Record<Street, string> = {
 interface ActionStep {
   street: Street
   actionIdx: number
+  isHeader?: boolean
 }
 
 function getStreetActions(hand: Hand, s: Street) {
@@ -31,8 +32,21 @@ function getStreetActions(hand: Hand, s: Street) {
 
 function buildSteps(hand: Hand): ActionStep[] {
   const steps: ActionStep[] = []
-  for (const street of STREETS) {
-    getStreetActions(hand, street).forEach((_, idx) => steps.push({ street, actionIdx: idx }))
+  for (const s of STREETS) {
+    const actions = getStreetActions(hand, s)
+    if (s !== 'preflop') {
+      // Add a header step for this street if the board has reached it or it has actions
+      const hasStreet =
+        s === 'flop' ? hand.board.length >= 3
+        : s === 'turn' ? hand.board.length >= 4
+        : hand.board.length >= 5
+      if (hasStreet || actions.length > 0) {
+        steps.push({ street: s, actionIdx: -1, isHeader: true })
+      }
+    }
+    for (let i = 0; i < actions.length; i++) {
+      steps.push({ street: s, actionIdx: i })
+    }
   }
   return steps
 }
@@ -89,17 +103,20 @@ export default function HandReplayer({ hand, hideBack = false }: Props) {
     return () => window.removeEventListener('keydown', handleKey)
   }, [goNext, goPrev])
 
-  // Board street: based on what's next to happen, so the board appears before actions on that street
-  const boardStreet: Street =
-    stepIdx < steps.length
-      ? steps[stepIdx].street
-      : stepIdx > 0
-      ? steps[stepIdx - 1].street
-      : 'preflop'
+  // Board street: derived from the last revealed step so the board appears
+  // exactly when we land on the street's header step.
+  const boardStreet: Street = stepIdx > 0 ? steps[stepIdx - 1].street : 'preflop'
 
   function handleStreetClick(s: Street) {
-    const firstIdx = steps.findIndex(step => step.street === s)
-    setStepIdx(firstIdx === -1 ? 0 : firstIdx)
+    if (s === 'preflop') {
+      // Preflop has no header step — jump to before the first preflop action
+      const firstIdx = steps.findIndex(step => step.street === 'preflop')
+      setStepIdx(firstIdx >= 0 ? firstIdx : 0)
+    } else {
+      // Jump to just after the header step so the board is visible and header is highlighted
+      const headerIdx = steps.findIndex(step => step.street === s && step.isHeader)
+      if (headerIdx >= 0) setStepIdx(headerIdx + 1)
+    }
   }
 
   return (

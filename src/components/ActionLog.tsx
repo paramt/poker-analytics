@@ -6,6 +6,7 @@ type Street = 'preflop' | 'flop' | 'turn' | 'river'
 interface ActionStep {
   street: Street
   actionIdx: number
+  isHeader?: boolean
 }
 
 interface Props {
@@ -173,45 +174,61 @@ export default function ActionLog({ hand, steps, stepIdx, onStepChange }: Props)
   return (
     <div className="flex flex-col gap-3 h-full">
       <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Action Log</h3>
-      <div className="flex-1 overflow-y-auto flex flex-col gap-4 pr-1">
-        {STREET_ORDER.map((s) => {
-          const actions = getStreetActions(hand, s)
-          if (actions.length === 0) return null
+      <div className="flex-1 overflow-y-auto flex flex-col gap-1 pr-1">
+        {/* Preflop has no header step — render a static label when there are preflop actions */}
+        {hand.preflop.length > 0 && (
+          <div className="text-xs font-semibold uppercase tracking-wider px-2 pb-0.5 text-emerald-400">
+            Pre-flop
+          </div>
+        )}
 
-          const firstGlobalIdx = steps.findIndex(step => step.street === s)
-          const streetIsAllFuture = firstGlobalIdx >= stepIdx
+        {steps.map((step, globalIdx) => {
+          if (step.isHeader) {
+            const isCurrent = globalIdx === stepIdx - 1
+            const isFuture = globalIdx >= stepIdx
+            return (
+              <div
+                key={`header-${step.street}`}
+                ref={isCurrent ? highlightRef : null}
+                onClick={() => onStepChange(globalIdx + 1)}
+                className={`px-2 py-1.5 rounded transition-colors cursor-pointer mt-1 ${
+                  isCurrent
+                    ? 'bg-emerald-700/60 ring-1 ring-emerald-400'
+                    : isFuture
+                    ? 'hover:bg-gray-700/20'
+                    : 'hover:bg-gray-700/50'
+                }`}
+              >
+                <span className={`text-xs font-semibold uppercase tracking-wider ${
+                  isFuture ? 'text-gray-600' : 'text-emerald-400'
+                }`}>
+                  {STREET_LABELS[step.street]}
+                </span>
+              </div>
+            )
+          }
 
+          const action = getStreetActions(hand, step.street)[step.actionIdx]
+          if (!action) return null
+          const isCurrent = globalIdx === stepIdx - 1
+          const isFuture = globalIdx >= stepIdx
+          const isHero = action.player === hand.heroId
           return (
-            <div key={s}>
-              <div className={`text-xs font-semibold uppercase tracking-wider mb-1 ${streetIsAllFuture ? 'text-gray-600' : 'text-emerald-400'}`}>
-                {STREET_LABELS[s]}
-              </div>
-              <div className="flex flex-col gap-0.5">
-                {actions.map((action, i) => {
-                  const globalIdx = steps.findIndex(step => step.street === s && step.actionIdx === i)
-                  const isCurrent = globalIdx === stepIdx - 1
-                  const isFuture = globalIdx >= stepIdx
-                  const isHero = action.player === hand.heroId
-                  return (
-                    <div
-                      key={i}
-                      ref={isCurrent ? highlightRef : null}
-                      onClick={() => onStepChange(globalIdx + 1)}
-                      className={`px-2 py-1 rounded transition-colors cursor-pointer ${
-                        isCurrent
-                          ? 'bg-emerald-700/60 ring-1 ring-emerald-400'
-                          : isFuture
-                          ? 'hover:bg-gray-700/20'
-                          : isHero
-                          ? 'bg-emerald-900/20 hover:bg-emerald-900/40'
-                          : 'hover:bg-gray-700/50'
-                      }`}
-                    >
-                      <ActionRow action={action} hand={hand} isFuture={isFuture} isHero={isHero} />
-                    </div>
-                  )
-                })}
-              </div>
+            <div
+              key={`${step.street}-${step.actionIdx}`}
+              ref={isCurrent ? highlightRef : null}
+              onClick={() => onStepChange(globalIdx + 1)}
+              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
+                isCurrent
+                  ? 'bg-emerald-700/60 ring-1 ring-emerald-400'
+                  : isFuture
+                  ? 'hover:bg-gray-700/20'
+                  : isHero
+                  ? 'bg-emerald-900/20 hover:bg-emerald-900/40'
+                  : 'hover:bg-gray-700/50'
+              }`}
+            >
+              <ActionRow action={action} hand={hand} isFuture={isFuture} isHero={isHero} />
             </div>
           )
         })}

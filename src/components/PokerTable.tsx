@@ -7,6 +7,7 @@ type Street = 'preflop' | 'flop' | 'turn' | 'river'
 interface ActionStep {
   street: Street
   actionIdx: number
+  isHeader?: boolean
 }
 
 interface Props {
