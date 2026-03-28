@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import type { Hand } from '../types'
 import { bestHandDescription } from '../lib/handEval'
-import { calculateEquity } from '../lib/equity'
+import EquityWorker from '../lib/equity.worker?worker'
 
 type Street = 'preflop' | 'flop' | 'turn' | 'river'
 
@@ -215,6 +215,15 @@ function getShownCards(hand: Hand, shortId: string): string[] {
 export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props) {
   const [flashPlayer, setFlashPlayer] = useState<string | null>(null)
   const flashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const [equity, setEquity] = useState<{ win: number; tie: number; lose: number } | null>(null)
+  const workerRef = useRef<Worker | null>(null)
+  const reqIdRef = useRef(0)
+
+  useEffect(() => {
+    const worker = new EquityWorker()
+    workerRef.current = worker
+    return () => worker.terminate()
+  }, [])
 
   useEffect(() => {
     clearTimeout(flashTimer.current)
@@ -249,10 +258,22 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
     .map(([shortId]) => getShownCards(hand, shortId))
     .filter(cards => cards.length >= 2)
 
-  const equity =
-    hand.holeCards.length >= 2 && villainCardsList.length > 0
-      ? calculateEquity(hand.holeCards, villainCardsList, boardCards)
-      : null
+  // Post equity calculation to worker when board/cards change.
+  // Keyed so we don't recalculate while stepping through actions within the same street.
+  const equityKey = boardCards.join(',') + '|' + hand.holeCards.join(',') + '|' + villainCardsList.map(v => v.join(',')).join(';')
+  useEffect(() => {
+    const worker = workerRef.current
+    if (!worker || hand.holeCards.length < 2 || villainCardsList.length === 0 || boardCards.length < 3) {
+      setEquity(null)
+      return
+    }
+    const reqId = ++reqIdRef.current
+    worker.onmessage = (e: MessageEvent) => {
+      if (e.data.reqId === reqId) setEquity(e.data.result)
+    }
+    worker.postMessage({ reqId, heroCards: hand.holeCards, villainCards: villainCardsList, boardCards })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [equityKey])
 
   return (
     <div className="relative w-full" style={{ paddingBottom: '60%' }}>

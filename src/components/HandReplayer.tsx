@@ -80,9 +80,21 @@ interface Props {
   nextHandId?: string
 }
 
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia('(min-width: 640px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 640px)')
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isDesktop
+}
+
 export default function HandReplayer({ hand, hideBack = false, backHref, prevHandId, nextHandId }: Props) {
   const { flaggedHands } = useStore()
   const flaggedData = flaggedHands.find((f) => f.handId === hand.id)
+  const isDesktop = useIsDesktop()
 
   const steps = useMemo(() => buildSteps(hand), [hand])
   const totalSteps = steps.length
@@ -234,9 +246,9 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
 
       {/* Main content */}
       <div className="flex flex-col sm:flex-row gap-4 flex-1 min-h-0">
-        {/* Table + controls — hidden on mobile, visible on sm+ */}
+        {/* Table + controls — only rendered (not just hidden) on desktop to avoid expensive equity calc on mobile */}
         <div className="hidden sm:flex flex-col flex-1 min-w-0 gap-2">
-          <PokerTable hand={hand} steps={steps} stepIdx={stepIdx} boardStreet={boardStreet} />
+          {isDesktop && <PokerTable hand={hand} steps={steps} stepIdx={stepIdx} boardStreet={boardStreet} />}
 
           {/* Step controls below the table */}
           <div className="flex items-center justify-center gap-4">
