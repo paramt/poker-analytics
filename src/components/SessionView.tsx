@@ -1,6 +1,6 @@
 import { useLocation } from 'wouter'
 import { useStore } from '../store'
-import type { Hand, AITag } from '../types'
+import type { Hand, AITag, FlaggedHand } from '../types'
 import StatsBar from './StatsBar'
 
 function suitColor(card: string): string {
@@ -82,7 +82,26 @@ export default function SessionView() {
   }
 
   const flaggedIds = new Set(flaggedHands.map((f) => f.handId))
-  const flaggedMap = new Map(flaggedHands.map((f) => [f.handId, f]))
+
+  // Merge duplicate handIds: LLM tag is primary, bigpot becomes an extra badge
+  const groupedFlagged = Array.from(
+    flaggedHands.reduce((map, fh) => {
+      if (!map.has(fh.handId)) {
+        map.set(fh.handId, { primary: fh, extraTags: [] as AITag[] })
+      } else {
+        const group = map.get(fh.handId)!
+        if (fh.tag !== 'bigpot') {
+          group.extraTags.push(group.primary.tag)
+          group.primary = fh
+        } else {
+          group.extraTags.push(fh.tag)
+        }
+      }
+      return map
+    }, new Map<number, { primary: FlaggedHand; extraTags: AITag[] }>())
+  ).map(([, v]) => v)
+
+  const flaggedMap = new Map(groupedFlagged.map(({ primary }) => [primary.handId, primary]))
 
   const displayHands = activeTab === 'flagged' ? hands.filter((h) => flaggedIds.has(h.id)) : hands
 
@@ -206,16 +225,17 @@ export default function SessionView() {
           {/* Flagged cards (Flagged tab only) */}
           {activeTab === 'flagged' && flaggedHands.length > 0 && (
             <div className="flex flex-col gap-3 mb-6">
-              {flaggedHands.map((fh) => {
+              {groupedFlagged.map(({ primary: fh, extraTags }) => {
                 const hand = hands.find((h) => h.id === fh.handId)
                 return (
                   <div
-                    key={`${fh.handId}-${fh.tag}`}
+                    key={fh.handId}
                     className={`flex items-start gap-4 bg-gray-800 rounded-xl p-4 border-l-4 ${TAG_BORDER[fh.tag]} border border-gray-700`}
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <TagBadge tag={fh.tag} />
+                        {extraTags.map((t) => <TagBadge key={t} tag={t} />)}
                         <span className="text-sm font-medium text-gray-300">Hand #{fh.handId}</span>
                         {hand && hand.holeCards.length > 0 && (
                           <span className="flex gap-0.5">
