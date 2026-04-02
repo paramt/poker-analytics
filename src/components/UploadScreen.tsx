@@ -110,7 +110,7 @@ export default function UploadScreen() {
         scanHands(hands, heroId, apiKey, (progress) => {
           setScanState({ isScanning: true, progress })
         }).then(async ({ results: aiResults, partial: aiPartial }) => {
-          const allFlags = [...bigpotFlags, ...aiResults]
+          const allFlags = [...bigpotFlags, ...aiResults].sort((a, b) => a.handId - b.handId)
           setFlaggedHands(allFlags)
           setScanState({ isScanning: false, partial: aiPartial })
           await saveSession({ ...session, flaggedHands: allFlags })
@@ -144,7 +144,7 @@ export default function UploadScreen() {
       const stats = computeStats(hands, demoHeroId)
       const bigpotFlags = tagBigPots(hands)
       // Merge client-computed bigpot flags with the pre-computed AI flags
-      const allFlags = [...bigpotFlags, ...DEMO_FLAGS]
+      const allFlags = [...bigpotFlags, ...DEMO_FLAGS].sort((a, b) => a.handId - b.handId)
 
       const heroPlayer = hands[0]?.players[demoHeroId]
 

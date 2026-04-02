@@ -93,7 +93,8 @@ function useIsDesktop() {
 
 export default function HandReplayer({ hand, hideBack = false, backHref, prevHandId, nextHandId }: Props) {
   const { flaggedHands } = useStore()
-  const flaggedData = flaggedHands.find((f) => f.handId === hand.id)
+  const flaggedData = flaggedHands.find((f) => f.handId === hand.id && f.tag !== 'bigpot')
+    ?? flaggedHands.find((f) => f.handId === hand.id)
   const isDesktop = useIsDesktop()
 
   const steps = useMemo(() => buildSteps(hand), [hand])

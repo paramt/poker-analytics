@@ -138,7 +138,7 @@ export function parseClaudeResponse(text: string): FlaggedHand[] {
       .map(item => ({
         handId: item.handId,
         tag: item.tag as AITag,
-        summary: typeof item.summary === 'string' ? item.summary.slice(0, 300) : '',
+        summary: typeof item.summary === 'string' ? item.summary : '',
       }))
   } catch {
     return []
