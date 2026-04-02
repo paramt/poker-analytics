@@ -18,6 +18,11 @@ interface Props {
 
 const STREET_ORDER: Street[] = ['preflop', 'flop', 'turn', 'river']
 
+function getFullBoard2(board: string[], board2: string[]): string[] {
+  const sharedCount = Math.max(0, board.length - board2.length)
+  return [...board.slice(0, sharedCount), ...board2]
+}
+
 function getBoardCardsForStreet(board: string[], street: Street): string[] {
   switch (street) {
     case 'preflop': return []
@@ -221,6 +226,10 @@ export default function ActionLog({ hand, steps, stepIdx, onStepChange }: Props)
             const isCurrent = globalIdx === stepIdx - 1
             const isFuture = globalIdx >= stepIdx
             const streetCards = getBoardCardsForStreet(hand.board, step.street)
+            const streetCards2 = hand.board2 && hand.board2.length > 0
+              ? getBoardCardsForStreet(getFullBoard2(hand.board, hand.board2), step.street)
+              : []
+            const showBoard2 = streetCards2.length > 0 && streetCards2.join('') !== streetCards.join('')
             return (
               <div
                 key={`header-${step.street}`}
@@ -243,6 +252,13 @@ export default function ActionLog({ hand, steps, stepIdx, onStepChange }: Props)
                   {!isFuture && streetCards.map((card, ci) => (
                     <InlineCard key={ci} card={card} />
                   ))}
+                  {!isFuture && showBoard2 && (
+                    <>
+                      <span className="text-gray-600 text-[10px]">·</span>
+                      <span className="text-[9px] font-bold text-emerald-600">2:</span>
+                      {streetCards2.map((card, ci) => <InlineCard key={ci} card={card} />)}
+                    </>
+                  )}
                 </div>
               </div>
             )

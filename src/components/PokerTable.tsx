@@ -40,6 +40,11 @@ function CardDisplay({ card, small = false }: { card: string; small?: boolean })
   )
 }
 
+function getFullBoard2(board: string[], board2: string[]): string[] {
+  const sharedCount = Math.max(0, board.length - board2.length)
+  return [...board.slice(0, sharedCount), ...board2]
+}
+
 function getVisibleBoardCards(board: string[], street: Street): string[] {
   switch (street) {
     case 'preflop': return []
@@ -251,6 +256,11 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
 
   const foldedPlayers = getFoldedPlayers(hand, steps, stepIdx)
   const boardCards = getVisibleBoardCards(hand.board, boardStreet)
+  const fullBoard2 = hand.board2 && hand.board2.length > 0
+    ? getFullBoard2(hand.board, hand.board2)
+    : null
+  const boardCards2 = fullBoard2 ? getVisibleBoardCards(fullBoard2, boardStreet) : []
+  const showDualBoard = boardCards2.length > 0 && boardCards2.join('') !== boardCards.join('')
   const { pot, currentBets } = computePotAndBets(hand, steps, stepIdx, boardStreet)
 
   const villainCardsList = rotated
@@ -284,13 +294,26 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
       >
         {/* Board cards + pot in center */}
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-          <div className="flex items-center gap-1.5">
-            {boardCards.length === 0 ? (
+          <div className="flex flex-col items-center gap-1">
+            {showDualBoard ? (
+              <>
+                <div className="flex items-center gap-1">
+                  <span className="text-[9px] text-green-400 font-bold w-2 text-right">1</span>
+                  {boardCards.map((card, i) => <CardDisplay key={i} card={card} />)}
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[9px] text-green-400 font-bold w-2 text-right">2</span>
+                  {boardCards2.map((card, i) => <CardDisplay key={i} card={card} />)}
+                </div>
+              </>
+            ) : boardCards.length === 0 ? (
               <span className="text-green-700 text-sm font-medium opacity-60 select-none">
                 Waiting for board
               </span>
             ) : (
-              boardCards.map((card, i) => <CardDisplay key={i} card={card} />)
+              <div className="flex items-center gap-1.5">
+                {boardCards.map((card, i) => <CardDisplay key={i} card={card} />)}
+              </div>
             )}
           </div>
           {pot > 0 && (
