@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'wouter'
 import { useStore } from '../store'
 import type { Hand } from '../types'
 import PokerTable from './PokerTable'
@@ -92,6 +93,7 @@ function useIsDesktop() {
 }
 
 export default function HandReplayer({ hand, hideBack = false, backHref, prevHandId, nextHandId }: Props) {
+  const [, navigate] = useLocation()
   const { flaggedHands } = useStore()
   const flaggedData = flaggedHands.find((f) => f.handId === hand.id && f.tag !== 'bigpot')
     ?? flaggedHands.find((f) => f.handId === hand.id)
@@ -110,14 +112,16 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      // Don't intercept arrow keys when user is typing in an input
+      // Don't intercept keys when user is typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if (e.key === 'ArrowRight') goNext()
-      if (e.key === 'ArrowLeft') goPrev()
+      if (e.key === 'ArrowDown') { e.preventDefault(); goNext() }
+      if (e.key === 'ArrowUp') { e.preventDefault(); goPrev() }
+      if (e.key === 'ArrowRight' && nextHandId) navigate(nextHandId)
+      if (e.key === 'ArrowLeft' && prevHandId) navigate(prevHandId)
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [goNext, goPrev])
+  }, [goNext, goPrev, navigate, nextHandId, prevHandId])
 
   // Board street: derived from the last revealed step so the board appears
   // exactly when we land on the street's header step.
