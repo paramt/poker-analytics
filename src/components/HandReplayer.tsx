@@ -20,6 +20,7 @@ interface ActionStep {
   street: Street
   actionIdx: number
   isHeader?: boolean
+  run2?: boolean  // true for second-run header steps in run-it-twice
 }
 
 function getStreetActions(hand: Hand, s: Street) {
@@ -49,6 +50,19 @@ function buildSteps(hand: Hand): ActionStep[] {
       steps.push({ street: s, actionIdx: i })
     }
   }
+
+  // Run-it-twice: append second-run header steps after all run-1 steps
+  if (hand.board2 && hand.board2.length > 0) {
+    const sharedCount = Math.max(0, hand.board.length - hand.board2.length)
+    const full2 = [...hand.board.slice(0, sharedCount), ...hand.board2]
+    if (full2.length >= 3 && hand.board.length >= 3 && full2.slice(0, 3).join('') !== hand.board.slice(0, 3).join(''))
+      steps.push({ street: 'flop', actionIdx: -1, isHeader: true, run2: true })
+    if (full2.length >= 4 && hand.board.length >= 4 && full2[3] !== hand.board[3])
+      steps.push({ street: 'turn', actionIdx: -1, isHeader: true, run2: true })
+    if (full2.length >= 5 && hand.board.length >= 5 && full2[4] !== hand.board[4])
+      steps.push({ street: 'river', actionIdx: -1, isHeader: true, run2: true })
+  }
+
   return steps
 }
 
@@ -128,9 +142,25 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
     return () => window.removeEventListener('keydown', handleKey)
   }, [goNext, goPrev, navigate, nextHandId, prevHandId])
 
-  // Board street: derived from the last revealed step so the board appears
-  // exactly when we land on the street's header step.
-  const boardStreet: Street = stepIdx > 0 ? steps[stepIdx - 1].street : 'preflop'
+  // Clamp stepIdx to valid range — hand and steps update synchronously but
+  // the useEffect reset of stepIdx fires one render later, so we guard here.
+  const safeIdx = Math.min(stepIdx, steps.length)
+
+  // boardStreet: last revealed run-1 street (ignores run-2 steps so board1 stays at 'river')
+  const boardStreet: Street = (() => {
+    for (let i = safeIdx - 1; i >= 0; i--) {
+      if (!steps[i].run2) return steps[i].street
+    }
+    return 'preflop'
+  })()
+
+  // run2Street: last activated run-2 header's street (undefined = still in run 1)
+  const run2Street: Street | undefined = (() => {
+    for (let i = safeIdx - 1; i >= 0; i--) {
+      if (steps[i].run2 && steps[i].isHeader) return steps[i].street
+    }
+    return undefined
+  })()
 
   function handleStreetClick(s: Street) {
     if (s === 'preflop') {
@@ -262,7 +292,7 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
       <div className="flex flex-col sm:flex-row gap-4 flex-1 min-h-0">
         {/* Table + controls — only rendered (not just hidden) on desktop to avoid expensive equity calc on mobile */}
         <div className="hidden sm:flex flex-col flex-1 min-w-0 gap-2">
-          {isDesktop && <PokerTable hand={hand} steps={steps} stepIdx={stepIdx} boardStreet={boardStreet} />}
+          {isDesktop && <PokerTable hand={hand} steps={steps} stepIdx={safeIdx} boardStreet={boardStreet} run2Street={run2Street} />}
 
           {/* Step controls below the table */}
           <div className="flex items-center justify-center gap-4">
@@ -349,7 +379,7 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
 
         {/* Action log sidebar — full width on mobile, fixed sidebar on sm+ */}
         <div className="flex-1 sm:flex-none sm:w-56 shrink-0 bg-gray-800 rounded-xl p-4 overflow-y-auto">
-          <ActionLog hand={hand} steps={steps} stepIdx={stepIdx} onStepChange={setStepIdx} />
+          <ActionLog hand={hand} steps={steps} stepIdx={safeIdx} onStepChange={setStepIdx} />
         </div>
       </div>
     </div>

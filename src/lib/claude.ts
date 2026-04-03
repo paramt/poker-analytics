@@ -164,13 +164,16 @@ async function callClaude(
 ): Promise<string> {
   try {
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 2048,
+      model: 'claude-opus-4-6',
+      max_tokens: 8000,
+      thinking: { type: 'enabled', budget_tokens: 5000 },
       messages: [{ role: 'user', content: prompt }],
     })
-    const content = response.content[0]
-    if (content.type !== 'text') return '[]'
-    return content.text
+    // With extended thinking the response may start with a thinking block;
+    // find the text block that contains the JSON output.
+    const textBlock = response.content.find(b => b.type === 'text')
+    if (!textBlock || textBlock.type !== 'text') return '[]'
+    return textBlock.text
   } catch (err: unknown) {
     const status = (err as { status?: number }).status
     if (status === 429 && attempt < MAX_RETRIES) {

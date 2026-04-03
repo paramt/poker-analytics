@@ -7,6 +7,7 @@ interface ActionStep {
   street: Street
   actionIdx: number
   isHeader?: boolean
+  run2?: boolean
 }
 
 interface Props {
@@ -225,14 +226,49 @@ export default function ActionLog({ hand, steps, stepIdx, onStepChange }: Props)
           if (step.isHeader) {
             const isCurrent = globalIdx === stepIdx - 1
             const isFuture = globalIdx >= stepIdx
+            const key = `header-${step.run2 ? 'r2' : 'r1'}-${step.street}`
+
+            if (step.run2) {
+              // Second-run header: show board2 cards for this street
+              const full2 = hand.board2 && hand.board2.length > 0
+                ? getFullBoard2(hand.board, hand.board2)
+                : []
+              const streetCards2 = getBoardCardsForStreet(full2, step.street)
+              return (
+                <div
+                  key={key}
+                  ref={isCurrent ? highlightRef : null}
+                  onClick={() => onStepChange(globalIdx + 1)}
+                  className={`px-2 py-1.5 rounded transition-colors cursor-pointer mt-1 ${
+                    isCurrent
+                      ? 'bg-emerald-700/60 ring-1 ring-emerald-400'
+                      : isFuture
+                      ? 'hover:bg-gray-700/20'
+                      : 'hover:bg-gray-700/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`text-[9px] font-bold uppercase tracking-wider ${
+                      isFuture ? 'text-gray-600' : 'text-emerald-600'
+                    }`}>Run 2</span>
+                    <span className={`text-xs font-semibold uppercase tracking-wider ${
+                      isFuture ? 'text-gray-600' : 'text-emerald-400'
+                    }`}>
+                      {STREET_LABELS[step.street]}
+                    </span>
+                    {!isFuture && streetCards2.map((card, ci) => (
+                      <InlineCard key={ci} card={card} />
+                    ))}
+                  </div>
+                </div>
+              )
+            }
+
+            // Run-1 header: show only board1 cards for this street
             const streetCards = getBoardCardsForStreet(hand.board, step.street)
-            const streetCards2 = hand.board2 && hand.board2.length > 0
-              ? getBoardCardsForStreet(getFullBoard2(hand.board, hand.board2), step.street)
-              : []
-            const showBoard2 = streetCards2.length > 0 && streetCards2.join('') !== streetCards.join('')
             return (
               <div
-                key={`header-${step.street}`}
+                key={key}
                 ref={isCurrent ? highlightRef : null}
                 onClick={() => onStepChange(globalIdx + 1)}
                 className={`px-2 py-1.5 rounded transition-colors cursor-pointer mt-1 ${
@@ -252,13 +288,6 @@ export default function ActionLog({ hand, steps, stepIdx, onStepChange }: Props)
                   {!isFuture && streetCards.map((card, ci) => (
                     <InlineCard key={ci} card={card} />
                   ))}
-                  {!isFuture && showBoard2 && (
-                    <>
-                      <span className="text-gray-600 text-[10px]">·</span>
-                      <span className="text-[9px] font-bold text-emerald-600">2:</span>
-                      {streetCards2.map((card, ci) => <InlineCard key={ci} card={card} />)}
-                    </>
-                  )}
                 </div>
               </div>
             )

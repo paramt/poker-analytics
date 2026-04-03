@@ -9,6 +9,7 @@ interface ActionStep {
   street: Street
   actionIdx: number
   isHeader?: boolean
+  run2?: boolean
 }
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
   steps: ActionStep[]
   stepIdx: number
   boardStreet: Street
+  run2Street?: Street  // if set, we're in run 2 — show full board1 + board2 up to this street
 }
 
 function suitColor(card: string): string {
@@ -217,7 +219,7 @@ function getShownCards(hand: Hand, shortId: string): string[] {
   return []
 }
 
-export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props) {
+export default function PokerTable({ hand, steps, stepIdx, boardStreet, run2Street }: Props) {
   const [flashPlayer, setFlashPlayer] = useState<string | null>(null)
   const flashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [equity, setEquity] = useState<{ win: number; tie: number; lose: number } | null>(null)
@@ -255,11 +257,17 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
       : sortedPlayers
 
   const foldedPlayers = getFoldedPlayers(hand, steps, stepIdx)
-  const boardCards = getVisibleBoardCards(hand.board, boardStreet)
+  // During run 1: show board1 up to boardStreet, never show board2 yet
+  // During run 2: show full board1 + board2 progressively up to run2Street
+  const boardCards = run2Street
+    ? getVisibleBoardCards(hand.board, 'river')
+    : getVisibleBoardCards(hand.board, boardStreet)
   const fullBoard2 = hand.board2 && hand.board2.length > 0
     ? getFullBoard2(hand.board, hand.board2)
     : null
-  const boardCards2 = fullBoard2 ? getVisibleBoardCards(fullBoard2, boardStreet) : []
+  const boardCards2 = run2Street && fullBoard2
+    ? getVisibleBoardCards(fullBoard2, run2Street)
+    : []
   const showDualBoard = boardCards2.length > 0 && boardCards2.join('') !== boardCards.join('')
   const { pot, currentBets } = computePotAndBets(hand, steps, stepIdx, boardStreet)
 

@@ -11,6 +11,7 @@ interface ActionStep {
   street: Street
   actionIdx: number
   isHeader?: boolean
+  run2?: boolean
 }
 
 const STREETS: Street[] = ['preflop', 'flop', 'turn', 'river']
@@ -58,6 +59,19 @@ function buildSteps(hand: Hand): ActionStep[] {
     }
     actions.forEach((_, idx) => steps.push({ street: s, actionIdx: idx }))
   }
+
+  // Run-it-twice: append second-run header steps after all run-1 steps
+  if (hand.board2 && hand.board2.length > 0) {
+    const sharedCount = Math.max(0, hand.board.length - hand.board2.length)
+    const full2 = [...hand.board.slice(0, sharedCount), ...hand.board2]
+    if (full2.length >= 3 && hand.board.length >= 3 && full2.slice(0, 3).join('') !== hand.board.slice(0, 3).join(''))
+      steps.push({ street: 'flop', actionIdx: -1, isHeader: true, run2: true })
+    if (full2.length >= 4 && hand.board.length >= 4 && full2[3] !== hand.board[3])
+      steps.push({ street: 'turn', actionIdx: -1, isHeader: true, run2: true })
+    if (full2.length >= 5 && hand.board.length >= 5 && full2[4] !== hand.board[4])
+      steps.push({ street: 'river', actionIdx: -1, isHeader: true, run2: true })
+  }
+
   return steps
 }
 
@@ -97,13 +111,13 @@ export default function SharedHandView() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [goNext, goPrev])
 
-  const boardStreet: Street = hand
-    ? stepIdx < steps.length
-      ? steps[stepIdx].street
-      : stepIdx > 0
-      ? steps[stepIdx - 1].street
-      : 'preflop'
-    : 'preflop'
+  const boardStreet: Street = (() => {
+    for (let i = stepIdx - 1; i >= 0; i--) {
+      if (!steps[i].run2) return steps[i].street
+    }
+    if (stepIdx < steps.length && !steps[stepIdx].run2) return steps[stepIdx].street
+    return 'preflop'
+  })()
 
   function handleStreetClick(s: Street) {
     const firstIdx = steps.findIndex(step => step.street === s)
