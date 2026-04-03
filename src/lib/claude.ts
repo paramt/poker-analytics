@@ -102,13 +102,13 @@ Return ONLY a JSON array (no markdown, no explanation) in this exact format:
 [{"handId": <number>, "tag": "<tag>", "summary": "<1-2 sentence summary>"}]
 
 Tags (use exactly one per flagged hand):
-- "hero": Hero made a tough call with a marginal hand (e.g. ace-high, middle pair, bottom two pair) on a dangerous board against heavy betting or a big shove, and it was correct. The strength of the call lies in reading the opponent's range — not in holding a strong hand.
+- "hero": Hero made a call (not a bet or raise) that was genuinely difficult at the time — facing a large bet, big shove, or credible aggression — with a hand that most players would fold (e.g. ace-high, middle pair, weak two pair). The call turned out to be correct: hero's hand was good, or they caught a bluff. All three must be true: (1) it was a call, (2) it was hard to make, (3) it was right.
 - "laydown": Hero folded a genuinely strong hand (e.g. top pair, overpair, set, straight) facing action that credibly represented a better hand. The fold saved significant chips and required real discipline.
 - "learning": A clear mistake — wrong sizing, spewing chips with a bluff on the wrong board, calling off a stack with a dominated hand, or missing obvious value. Focus on decisions that cost meaningful EV, not minor leaks.
 
 Rules:
 - Only flag hands where hero saw a flop (preflop folds are almost never notable).
-- Do NOT flag a hand as "hero" just because hero won — the call must have been marginal at the time.
+- Do NOT flag a hand as "hero" for a bet, raise, or bluff-catch with a strong hand — it must be a call, it must have been hard, and it must have been correct. Winning a hand is not enough.
 - Do NOT flag a hand as "laydown" if hero folded preflop or folded a weak hand — the fold must have sacrificed real showdown equity.
 - Skip routine hands (standard c-bets, obvious folds, clear value bets). Return [] if nothing qualifies.
 
