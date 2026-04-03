@@ -51,7 +51,7 @@ export default function NetTimeline({ hands, heroId }: Props) {
   if (hands.length < 2) return null
 
   const n = hands.length
-  const allValues = ordered.flatMap(p => p.cumulative)
+  const allValues = ordered.flatMap(p => p.cumulative).filter((v): v is number => v !== null)
   const rawMin = Math.min(0, ...allValues)
   const rawMax = Math.max(0, ...allValues)
   const padding = Math.max((rawMax - rawMin) * 0.08, 5)
@@ -89,11 +89,10 @@ export default function NetTimeline({ hands, heroId }: Props) {
     const frac = Math.max(0, Math.min(1, relX / innerW))
     const idx = Math.round(frac * (n - 1))
     const x = toX(idx)
-    const tooltipValues = ordered.map((p, ci) => ({
-      displayName: p.displayName,
-      cumulative: p.cumulative[idx] ?? 0,
-      color: colorFor(ci),
-    })).sort((a, b) => b.cumulative - a.cumulative)
+    const tooltipValues = ordered
+      .map((p, ci) => ({ displayName: p.displayName, cumulative: p.cumulative[idx], color: colorFor(ci) }))
+      .filter((v): v is { displayName: string; cumulative: number; color: string } => v.cumulative !== null)
+      .sort((a, b) => b.cumulative - a.cumulative)
     setTooltip({ x, y: e.clientY - rect.top, handId: timeline.handIds[idx], values: tooltipValues })
   }
 
@@ -147,19 +146,30 @@ export default function NetTimeline({ hands, heroId }: Props) {
             const ci = ordered.length - 1 - revIdx
             const color = colorFor(ci)
             const isHero = player.id === heroId
-            const points = player.cumulative
-              .map((v, i) => `${toX(i)},${toY(v)}`)
-              .join(' ')
-            return (
+
+            // Split cumulative into contiguous segments (null = gap)
+            const segments: { i: number; v: number }[][] = []
+            let seg: { i: number; v: number }[] = []
+            for (let i = 0; i < player.cumulative.length; i++) {
+              const v = player.cumulative[i]
+              if (v === null) {
+                if (seg.length > 0) { segments.push(seg); seg = [] }
+              } else {
+                seg.push({ i, v })
+              }
+            }
+            if (seg.length > 0) segments.push(seg)
+
+            return segments.map((s, si) => (
               <polyline
-                key={player.id}
-                points={points}
+                key={`${player.id}-${si}`}
+                points={s.map(({ i, v }) => `${toX(i)},${toY(v)}`).join(' ')}
                 fill="none"
                 stroke={color}
                 strokeWidth={isHero ? 2.5 : 1.5}
                 strokeOpacity={isHero ? 1 : 0.7}
               />
-            )
+            ))
           })}
 
           {/* Tooltip vertical line */}

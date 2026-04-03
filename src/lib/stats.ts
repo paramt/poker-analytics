@@ -74,11 +74,14 @@ export function computeStats(hands: Hand[], heroId: string): SessionStats {
 
   let vpipCount = 0
   let pfrCount = 0
+  let handsDealtIn = 0
   let wtsdDenom = 0
   let wtsdNum = 0
   let net = 0
 
   for (const hand of hands) {
+    const dealtIn = hand.holeCards.length > 0
+    if (dealtIn) handsDealtIn++
     if (heroVPIP(hand)) vpipCount++
     if (heroPFR(hand)) pfrCount++
     if (wentToFlop(hand)) {
@@ -88,17 +91,16 @@ export function computeStats(hands: Hand[], heroId: string): SessionStats {
     net += hand.result
   }
 
-  const n = hands.length
   const pct = (num: number, denom: number) =>
     denom === 0 ? 0 : Math.round((num / denom) * 100)
 
   return {
     net: Math.round(net),
-    vpip: pct(vpipCount, n),
-    pfr: pct(pfrCount, n),
+    vpip: pct(vpipCount, handsDealtIn),
+    pfr: pct(pfrCount, handsDealtIn),
     af: computeAF(hands, heroId),
     wtsd: pct(wtsdNum, wtsdDenom),
-    handsPlayed: n,
+    handsPlayed: hands.length,
   }
 }
 
@@ -148,7 +150,7 @@ export function computePlayerResults(hand: Hand): Record<string, number> {
  */
 export function buildNetTimelines(hands: Hand[]): {
   handIds: number[]
-  players: { id: string; displayName: string; cumulative: number[] }[]
+  players: { id: string; displayName: string; cumulative: (number | null)[] }[]
 } {
   if (hands.length === 0) return { handIds: [], players: [] }
 
@@ -162,11 +164,16 @@ export function buildNetTimelines(hands: Hand[]): {
 
   const playerIds = Array.from(playerMeta.keys())
   const running = new Map<string, number>(playerIds.map(id => [id, 0]))
-  const series = new Map<string, number[]>(playerIds.map(id => [id, []]))
+  const series = new Map<string, (number | null)[]>(playerIds.map(id => [id, []]))
 
   for (const hand of hands) {
     const results = computePlayerResults(hand)
     for (const id of playerIds) {
+      if (!(id in hand.players)) {
+        // Player wasn't at the table for this hand — emit null to create a gap
+        series.get(id)!.push(null)
+        continue
+      }
       const prev = running.get(id) ?? 0
       const delta = results[id] ?? 0
       const next = prev + delta
