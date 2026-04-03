@@ -38,7 +38,7 @@ export interface SessionStats {
   handsPlayed: number
 }
 
-export type AITag = 'learning' | 'hero' | 'laydown' | 'bigpot' | 'rare'
+export type AITag = 'learning' | 'hero' | 'laydown' | 'bigpot' | 'rare' | 'notable'
 
 export interface FlaggedHand {
   handId: number

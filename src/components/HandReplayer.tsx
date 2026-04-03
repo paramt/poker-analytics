@@ -98,6 +98,7 @@ const TAG_COLORS: Record<string, string> = {
   laydown: 'bg-emerald-600 text-emerald-100',
   bigpot: 'bg-orange-600 text-orange-100',
   rare: 'bg-purple-600 text-purple-100',
+  notable: 'bg-teal-600 text-teal-100',
 }
 
 interface Props {

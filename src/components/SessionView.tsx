@@ -15,6 +15,7 @@ const TAG_COLORS: Record<AITag, string> = {
   laydown: 'bg-emerald-600 text-emerald-100',
   bigpot: 'bg-orange-600 text-orange-100',
   rare: 'bg-purple-600 text-purple-100',
+  notable: 'bg-teal-600 text-teal-100',
 }
 
 const TAG_BORDER: Record<AITag, string> = {
@@ -23,6 +24,7 @@ const TAG_BORDER: Record<AITag, string> = {
   laydown: 'border-l-emerald-500',
   bigpot: 'border-l-orange-500',
   rare: 'border-l-purple-500',
+  notable: 'border-l-teal-500',
 }
 
 function TagBadge({ tag }: { tag: AITag }) {

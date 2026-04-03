@@ -42,4 +42,10 @@ export const DEMO_FLAGS: FlaggedHand[] = [
     summary:
       "Param folded an overpair (kings) facing a 3-bet shove from Raghav who had been playing tight. With Raghav's tight 3-bet range, kings are likely crushed by aces here.",
   },
+  {
+    handId: 95,
+    tag: 'notable',
+    summary:
+      'Both Param and Raghav held pocket tens, splitting the pot on a board that made no better hand possible — a rare duplicate hole card cooler worth seeing.',
+  },
 ]
