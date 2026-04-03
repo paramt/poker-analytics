@@ -60,6 +60,10 @@ src/
 - **bigpot tag** — computed client-side (pot ≥ 3x session avg), no Claude needed
 - **Run-it-twice** — `board2?: string[]` field on Hand
 
+## Workflow
+
+- Always commit and push after completing a feature request.
+
 ## Deploy
 
 Vercel. Set these secrets in GitHub:
