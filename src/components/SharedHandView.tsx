@@ -44,8 +44,13 @@ function getStreetActions(hand: Hand, s: Street) {
   }
 }
 
+const TERMINAL_TYPES = new Set(['collect', 'show', 'uncalled'])
+
 function buildSteps(hand: Hand): ActionStep[] {
+  const isRunItTwice = !!(hand.board2 && hand.board2.length > 0)
   const steps: ActionStep[] = []
+  const deferred: ActionStep[] = []
+
   for (const s of STREETS) {
     const actions = getStreetActions(hand, s)
     if (s !== 'preflop') {
@@ -57,19 +62,26 @@ function buildSteps(hand: Hand): ActionStep[] {
         steps.push({ street: s, actionIdx: -1, isHeader: true })
       }
     }
-    actions.forEach((_, idx) => steps.push({ street: s, actionIdx: idx }))
+    actions.forEach((a, idx) => {
+      const step: ActionStep = { street: s, actionIdx: idx }
+      if (isRunItTwice && TERMINAL_TYPES.has(a.type)) {
+        deferred.push(step)
+      } else {
+        steps.push(step)
+      }
+    })
   }
 
-  // Run-it-twice: append second-run header steps after all run-1 steps
-  if (hand.board2 && hand.board2.length > 0) {
-    const sharedCount = Math.max(0, hand.board.length - hand.board2.length)
-    const full2 = [...hand.board.slice(0, sharedCount), ...hand.board2]
+  if (isRunItTwice) {
+    const sharedCount = Math.max(0, hand.board.length - hand.board2!.length)
+    const full2 = [...hand.board.slice(0, sharedCount), ...hand.board2!]
     if (full2.length >= 3 && hand.board.length >= 3 && full2.slice(0, 3).join('') !== hand.board.slice(0, 3).join(''))
       steps.push({ street: 'flop', actionIdx: -1, isHeader: true, run2: true })
     if (full2.length >= 4 && hand.board.length >= 4 && full2[3] !== hand.board[3])
       steps.push({ street: 'turn', actionIdx: -1, isHeader: true, run2: true })
     if (full2.length >= 5 && hand.board.length >= 5 && full2[4] !== hand.board[4])
       steps.push({ street: 'river', actionIdx: -1, isHeader: true, run2: true })
+    steps.push(...deferred)
   }
 
   return steps
