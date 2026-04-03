@@ -107,6 +107,7 @@ interface Props {
   backHref?: string
   prevHandId?: string
   nextHandId?: string
+  sharedView?: boolean
 }
 
 function useIsDesktop() {
@@ -120,7 +121,7 @@ function useIsDesktop() {
   return isDesktop
 }
 
-export default function HandReplayer({ hand, hideBack = false, backHref, prevHandId, nextHandId }: Props) {
+export default function HandReplayer({ hand, hideBack = false, backHref, prevHandId, nextHandId, sharedView = false }: Props) {
   const [, navigate] = useLocation()
   const { flaggedHands } = useStore()
   const handFlags = flaggedHands.filter((f) => f.handId === hand.id)
@@ -236,6 +237,7 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-gray-100">
               Hand #{hand.id}
+              {sharedView && <span className="ml-2 text-sm font-normal text-gray-400">— Shared Replay</span>}
             </h2>
             {hand.holeCards.length > 0 && (
               <div className="flex gap-1 items-center">
