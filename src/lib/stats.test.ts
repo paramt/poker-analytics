@@ -181,13 +181,15 @@ describe('tagRareHands', () => {
     expect(flagged[0].summary).toContain('Full House')
   })
 
-  it('tags four of a kind in holdem', () => {
-    const hand = makeHand(2, {
+  it('tags four of a kind in holdem (2 hole cards)', () => {
+    const hand = makeHand(1, {
       holeCards: ['A♠', 'A♥'],
       board: ['A♦', 'A♣', '2♠', '3♦', '5♣'],
     })
     const flagged = tagRareHands([hand])
     expect(flagged).toHaveLength(1)
+    expect(flagged[0].tag).toBe('rare')
+    expect(flagged[0].handId).toBe(1)
     expect(flagged[0].summary).toContain('Four of a Kind')
   })
 
@@ -229,6 +231,15 @@ describe('tagRareHands', () => {
     expect(flagged).toHaveLength(1)
     expect(flagged[0].tag).toBe('rare')
     expect(flagged[0].summary).toContain('Four of a Kind')
+  })
+
+  it('treats PLO5 (5 hole cards) as omaha — does NOT tag full house', () => {
+    // PLO5: 5 hole cards, must use exactly 2 hole + 3 board
+    const hand = makeHand(7, {
+      holeCards: ['A♠', 'A♥', '2♣', '3♦', '4♠'],
+      board: ['K♠', 'K♥', 'K♦', '7♣', '8♠'],
+    })
+    expect(tagRareHands([hand])).toHaveLength(0)
   })
 
   it('does NOT tag a full house in omaha (below threshold)', () => {

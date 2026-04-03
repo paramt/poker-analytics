@@ -272,7 +272,7 @@ const HAND_NAMES = [
 /**
  * Tag hands where the hero made a rare hand:
  * full house or better in Hold'em, four of a kind or better in Omaha.
- * Game type is inferred from hole card count (2 = Hold'em, 4 = Omaha).
+ * Game type is inferred from hole card count (2 = Hold'em, 4+ = Omaha/PLO5).
  */
 export function tagRareHands(hands: Hand[]): FlaggedHand[] {
   const result: FlaggedHand[] = []
@@ -280,7 +280,7 @@ export function tagRareHands(hands: Hand[]): FlaggedHand[] {
   for (const hand of hands) {
     if (hand.holeCards.length === 0 || hand.board.length < 3) continue
 
-    const isOmaha = hand.holeCards.length === 4
+    const isOmaha = hand.holeCards.length >= 4 // PLO4, PLO5, etc.
     const hole = hand.holeCards.map(parseCard)
 
     const boards = [hand.board, ...(hand.board2 ? [hand.board2] : [])]
@@ -293,7 +293,7 @@ export function tagRareHands(hands: Hand[]): FlaggedHand[] {
       if (r > bestRank) bestRank = r
     }
 
-    const threshold = isOmaha ? 7 : 6
+    const threshold = isOmaha ? 7 : 6 // holdem: full house+, omaha: quads+
     if (bestRank < threshold) continue
 
     result.push({
