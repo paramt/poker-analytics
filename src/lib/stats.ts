@@ -1,4 +1,4 @@
-import type { Hand, SessionStats, FlaggedHand } from '../types'
+import type { Hand, SessionStats, FlaggedHand, Action } from '../types'
 
 /**
  * Determine if the hero voluntarily put money in preflop (VPIP).
@@ -99,6 +99,89 @@ export function computeStats(hands: Hand[], heroId: string): SessionStats {
     af: computeAF(hands, heroId),
     wtsd: pct(wtsdNum, wtsdDenom),
     handsPlayed: n,
+  }
+}
+
+/**
+ * Compute each player's net result for a single hand.
+ * Replicates the parser's delta logic: raises/calls are "to N" (total street
+ * commitment), so we track the incremental delta to avoid double-counting.
+ */
+export function computePlayerResults(hand: Hand): Record<string, number> {
+  const streets = [hand.preflop, hand.flop, hand.turn, hand.river]
+  const putIn = new Map<string, number>()
+  const collected = new Map<string, number>()
+  const uncalled = new Map<string, number>()
+  const streetCommitted = new Map<string, number>()
+  const MONEY_IN_TYPES = new Set(['call', 'bet', 'raise', 'post_sb', 'post_bb'])
+
+  for (const street of streets) {
+    streetCommitted.clear()
+    for (const action of street as Action[]) {
+      if (action.type === 'collect' && action.amount) {
+        collected.set(action.player, (collected.get(action.player) ?? 0) + action.amount)
+      } else if (action.type === 'uncalled' && action.amount) {
+        uncalled.set(action.player, (uncalled.get(action.player) ?? 0) + action.amount)
+      } else if (action.amount && MONEY_IN_TYPES.has(action.type)) {
+        const alreadyThisStreet = streetCommitted.get(action.player) ?? 0
+        const delta = Math.max(0, action.amount - alreadyThisStreet)
+        putIn.set(action.player, (putIn.get(action.player) ?? 0) + delta)
+        streetCommitted.set(action.player, action.amount)
+      }
+    }
+  }
+
+  const results: Record<string, number> = {}
+  for (const playerId of Object.keys(hand.players)) {
+    const p = putIn.get(playerId) ?? 0
+    const c = collected.get(playerId) ?? 0
+    const u = uncalled.get(playerId) ?? 0
+    results[playerId] = c - p + u
+  }
+  return results
+}
+
+/**
+ * Build cumulative net timelines for all players across all hands.
+ * Returns an array (one entry per hand) with each player's running total.
+ * Players who don't appear in a hand carry forward their previous cumulative.
+ */
+export function buildNetTimelines(hands: Hand[]): {
+  handIds: number[]
+  players: { id: string; displayName: string; cumulative: number[] }[]
+} {
+  if (hands.length === 0) return { handIds: [], players: [] }
+
+  // Collect all unique players across all hands
+  const playerMeta = new Map<string, string>() // id → displayName
+  for (const hand of hands) {
+    for (const [id, info] of Object.entries(hand.players)) {
+      if (!playerMeta.has(id)) playerMeta.set(id, info.displayName)
+    }
+  }
+
+  const playerIds = Array.from(playerMeta.keys())
+  const running = new Map<string, number>(playerIds.map(id => [id, 0]))
+  const series = new Map<string, number[]>(playerIds.map(id => [id, []]))
+
+  for (const hand of hands) {
+    const results = computePlayerResults(hand)
+    for (const id of playerIds) {
+      const prev = running.get(id) ?? 0
+      const delta = results[id] ?? 0
+      const next = prev + delta
+      running.set(id, next)
+      series.get(id)!.push(next)
+    }
+  }
+
+  return {
+    handIds: hands.map(h => h.id),
+    players: playerIds.map(id => ({
+      id,
+      displayName: playerMeta.get(id)!,
+      cumulative: series.get(id)!,
+    })),
   }
 }
 

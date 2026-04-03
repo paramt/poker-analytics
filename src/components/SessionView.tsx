@@ -2,6 +2,7 @@ import { useLocation } from 'wouter'
 import { useStore } from '../store'
 import type { Hand, AITag, FlaggedHand } from '../types'
 import StatsBar from './StatsBar'
+import NetTimeline from './NetTimeline'
 
 function suitColor(card: string): string {
   if (card.includes('♥') || card.includes('♦')) return 'text-red-400'
@@ -193,32 +194,35 @@ export default function SessionView() {
 
           {/* Stats tab */}
           {activeTab === 'stats' && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-              <BigStatTile
-                label="Net"
-                value={stats.net >= 0 ? `+${stats.net}` : `${stats.net}`}
-                sub="Chips won or lost"
-              />
-              <BigStatTile
-                label="VPIP"
-                value={`${stats.vpip}%`}
-                sub="Voluntarily put $ in pot (preflop). 20–30% is typical."
-              />
-              <BigStatTile
-                label="PFR"
-                value={`${stats.pfr}%`}
-                sub="Preflop raise %. Should be close to VPIP."
-              />
-              <BigStatTile
-                label="AF"
-                value={`${stats.af}`}
-                sub="Aggression factor postflop. >2 is aggressive."
-              />
-              <BigStatTile
-                label="WTSD"
-                value={`${stats.wtsd}%`}
-                sub="Went to showdown %. 25–35% is typical."
-              />
+            <div className="flex flex-col gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                <BigStatTile
+                  label="Net"
+                  value={stats.net >= 0 ? `+${stats.net}` : `${stats.net}`}
+                  sub="Chips won or lost"
+                />
+                <BigStatTile
+                  label="VPIP"
+                  value={`${stats.vpip}%`}
+                  sub="Voluntarily put $ in pot (preflop). 20–30% is typical."
+                />
+                <BigStatTile
+                  label="PFR"
+                  value={`${stats.pfr}%`}
+                  sub="Preflop raise %. Should be close to VPIP."
+                />
+                <BigStatTile
+                  label="AF"
+                  value={`${stats.af}`}
+                  sub="Aggression factor postflop. >2 is aggressive."
+                />
+                <BigStatTile
+                  label="WTSD"
+                  value={`${stats.wtsd}%`}
+                  sub="Went to showdown %. 25–35% is typical."
+                />
+              </div>
+              <NetTimeline hands={hands} heroId={session.heroId} />
             </div>
           )}
 
