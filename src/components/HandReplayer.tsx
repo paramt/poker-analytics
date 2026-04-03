@@ -390,7 +390,7 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
         </div>
 
         {/* Action log sidebar — full width on mobile, fixed sidebar on sm+ */}
-        <div className="flex-1 sm:flex-none sm:w-56 shrink-0 bg-gray-800 rounded-xl p-4 overflow-y-auto">
+        <div className="flex-1 sm:flex-none sm:w-56 shrink-0 min-h-0 bg-gray-800 rounded-xl p-4">
           <ActionLog hand={hand} steps={steps} stepIdx={safeIdx} onStepChange={setStepIdx} />
         </div>
       </div>

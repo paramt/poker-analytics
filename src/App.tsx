@@ -39,8 +39,8 @@ function HandPage() {
   if (missing || !hand) return <NotFound message="Hand not found." backTo={`/session/${id}`} />
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 p-6">
-      <div className="max-w-5xl mx-auto">
+    <div className="h-screen overflow-hidden bg-gray-900 text-gray-100 p-6 flex flex-col">
+      <div className="max-w-5xl w-full mx-auto flex-1 min-h-0">
         <HandReplayer
           hand={hand}
           backHref={`/session/${id}`}
