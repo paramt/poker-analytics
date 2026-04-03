@@ -42,6 +42,19 @@ function CardDisplay({ card, small = false }: { card: string; small?: boolean })
   )
 }
 
+function CardBack({ small = false }: { small?: boolean }) {
+  return (
+    <span
+      className={`inline-flex flex-col items-center justify-center bg-gray-700 rounded border border-gray-600 ${
+        small ? 'px-1 h-8 w-6' : 'px-1.5 h-10 w-8'
+      }`}
+      style={{
+        backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.04) 2px, rgba(255,255,255,0.04) 4px)',
+      }}
+    />
+  )
+}
+
 function getFullBoard2(board: string[], board2: string[]): string[] {
   const sharedCount = Math.max(0, board.length - board2.length)
   return [...board.slice(0, sharedCount), ...board2]
@@ -345,6 +358,7 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet, run2Stre
         const pos = hand.seatPositions[shortId]
         const currentStack = computeStackUpToStep(hand, shortId, steps, stepIdx)
         const visibleCards = isHero ? hand.holeCards : getShownCards(hand, shortId)
+        const numCards = hand.holeCards.length || 2
         const handDesc = visibleCards.length > 0 ? bestHandDescription(visibleCards, boardCards) : null
         const handDesc2 = showDualBoard && visibleCards.length > 0 ? bestHandDescription(visibleCards, boardCards2) : null
         const betAmount = currentBets.get(shortId) ?? 0
@@ -384,12 +398,14 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet, run2Stre
                   <span className="font-medium truncate max-w-[70px]">{info.displayName}</span>
                 </div>
                 <div className="text-gray-300 text-[10px]">{currentStack}</div>
-                {visibleCards.length > 0 && (
+                {!isFolded && (
                   <div className="flex flex-col items-center gap-0.5 mt-0.5">
                     <div className="flex gap-0.5">
-                      {visibleCards.map((card, ci) => (
-                        <CardDisplay key={ci} card={card} small />
-                      ))}
+                      {Array.from({ length: numCards }, (_, ci) =>
+                        ci < visibleCards.length
+                          ? <CardDisplay key={ci} card={visibleCards[ci]} small />
+                          : <CardBack key={ci} small />
+                      )}
                     </div>
                     {handDesc && !handDesc2 && (
                       <span className={`text-[10px] font-medium ${isHero ? 'text-emerald-200' : 'text-yellow-300'}`}>
