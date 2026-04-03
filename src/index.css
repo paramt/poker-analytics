@@ -15,4 +15,28 @@
   #root {
     min-height: 100svh;
   }
+
+  /* Styled scrollbars */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #374151; /* gray-700 */
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #4b5563; /* gray-600 */
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #374151 transparent;
+  }
 }
