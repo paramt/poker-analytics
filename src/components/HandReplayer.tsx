@@ -69,8 +69,9 @@ function suitColor(card: string): string {
 const TAG_COLORS: Record<string, string> = {
   learning: 'bg-amber-600 text-amber-100',
   hero: 'bg-blue-600 text-blue-100',
-  laydown: 'bg-purple-600 text-purple-100',
+  laydown: 'bg-emerald-600 text-emerald-100',
   bigpot: 'bg-orange-600 text-orange-100',
+  rare: 'bg-purple-600 text-purple-100',
 }
 
 interface Props {
@@ -95,8 +96,12 @@ function useIsDesktop() {
 export default function HandReplayer({ hand, hideBack = false, backHref, prevHandId, nextHandId }: Props) {
   const [, navigate] = useLocation()
   const { flaggedHands } = useStore()
-  const flaggedData = flaggedHands.find((f) => f.handId === hand.id && f.tag !== 'bigpot')
-    ?? flaggedHands.find((f) => f.handId === hand.id)
+  const handFlags = flaggedHands.filter((f) => f.handId === hand.id)
+    .sort((a, b) => {
+      // LLM tags first, then deterministic
+      const det = new Set(['bigpot', 'rare'])
+      return (det.has(a.tag) ? 1 : 0) - (det.has(b.tag) ? 1 : 0)
+    })
   const isDesktop = useIsDesktop()
 
   const steps = useMemo(() => buildSteps(hand), [hand])
@@ -212,16 +217,20 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
       </div>
 
       {/* AI Feedback */}
-      {flaggedData && (
-        <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-800 border border-gray-700">
-          <span
-            className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wide shrink-0 ${
-              TAG_COLORS[flaggedData.tag] ?? 'bg-gray-600 text-gray-100'
-            }`}
-          >
-            {flaggedData.tag}
-          </span>
-          <p className="text-sm text-gray-300">{flaggedData.summary}</p>
+      {handFlags.length > 0 && (
+        <div className="flex flex-col gap-2 p-3 rounded-lg bg-gray-800 border border-gray-700">
+          {handFlags.map((f) => (
+            <div key={f.tag} className="flex items-start gap-3">
+              <span
+                className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wide shrink-0 ${
+                  TAG_COLORS[f.tag] ?? 'bg-gray-600 text-gray-100'
+                }`}
+              >
+                {f.tag}
+              </span>
+              <p className="text-sm text-gray-300">{f.summary}</p>
+            </div>
+          ))}
         </div>
       )}
 

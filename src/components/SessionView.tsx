@@ -12,17 +12,17 @@ function suitColor(card: string): string {
 const TAG_COLORS: Record<AITag, string> = {
   learning: 'bg-amber-600 text-amber-100',
   hero: 'bg-blue-600 text-blue-100',
-  laydown: 'bg-purple-600 text-purple-100',
+  laydown: 'bg-emerald-600 text-emerald-100',
   bigpot: 'bg-orange-600 text-orange-100',
-  rare: 'bg-emerald-600 text-emerald-100',
+  rare: 'bg-purple-600 text-purple-100',
 }
 
 const TAG_BORDER: Record<AITag, string> = {
   learning: 'border-l-amber-500',
   hero: 'border-l-blue-500',
-  laydown: 'border-l-purple-500',
+  laydown: 'border-l-emerald-500',
   bigpot: 'border-l-orange-500',
-  rare: 'border-l-emerald-500',
+  rare: 'border-l-purple-500',
 }
 
 function TagBadge({ tag }: { tag: AITag }) {
@@ -86,25 +86,25 @@ export default function SessionView() {
 
   const flaggedIds = new Set(flaggedHands.map((f) => f.handId))
 
-  // Merge duplicate handIds: LLM tag is primary, bigpot becomes an extra badge
+  // Merge duplicate handIds: LLM tag is primary, deterministic tags (bigpot/rare) are extras
   const groupedFlagged = Array.from(
     flaggedHands.reduce((map, fh) => {
       if (!map.has(fh.handId)) {
-        map.set(fh.handId, { primary: fh, extraTags: [] as AITag[] })
+        map.set(fh.handId, { primary: fh, extras: [] as FlaggedHand[] })
       } else {
         const group = map.get(fh.handId)!
         if (fh.tag !== 'bigpot' && fh.tag !== 'rare') {
-          group.extraTags.push(group.primary.tag)
+          group.extras.push(group.primary)
           group.primary = fh
         } else {
-          group.extraTags.push(fh.tag)
+          group.extras.push(fh)
         }
       }
       return map
-    }, new Map<number, { primary: FlaggedHand; extraTags: AITag[] }>())
+    }, new Map<number, { primary: FlaggedHand; extras: FlaggedHand[] }>())
   ).map(([, v]) => v)
 
-  const flaggedMap = new Map(groupedFlagged.map(({ primary }) => [primary.handId, primary]))
+  const groupedFlaggedMap = new Map(groupedFlagged.map(({ primary, extras }) => [primary.handId, { primary, extras }]))
 
   const displayHands = activeTab === 'flagged' ? hands.filter((h) => flaggedIds.has(h.id)) : hands
 
@@ -231,7 +231,7 @@ export default function SessionView() {
           {/* Flagged cards (Flagged tab only) */}
           {activeTab === 'flagged' && flaggedHands.length > 0 && (
             <div className="flex flex-col gap-3 mb-6">
-              {groupedFlagged.map(({ primary: fh, extraTags }) => {
+              {groupedFlagged.map(({ primary: fh, extras }) => {
                 const hand = hands.find((h) => h.id === fh.handId)
                 return (
                   <div
@@ -241,7 +241,7 @@ export default function SessionView() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <TagBadge tag={fh.tag} />
-                        {extraTags.map((t) => <TagBadge key={t} tag={t} />)}
+                        {extras.map((e) => <TagBadge key={e.tag} tag={e.tag} />)}
                         <span className="text-sm font-medium text-gray-300">Hand #{fh.handId}</span>
                         {hand && hand.holeCards.length > 0 && (
                           <span className="flex gap-0.5">
@@ -250,6 +250,9 @@ export default function SessionView() {
                         )}
                       </div>
                       <p className="text-sm text-gray-400">{fh.summary}</p>
+                      {extras.map((e) => (
+                        <p key={e.tag} className="text-xs text-gray-500 mt-0.5">{e.summary}</p>
+                      ))}
                     </div>
                     {hand && (
                       <button
@@ -286,7 +289,7 @@ export default function SessionView() {
                   </thead>
                   <tbody>
                     {displayHands.map((hand) => {
-                      const flagged = flaggedMap.get(hand.id)
+                      const flaggedGroup = groupedFlaggedMap.get(hand.id)
                       const position = hand.seatPositions[hand.heroId] ?? '—'
                       const flop = hand.board.slice(0, 3)
                       const resultStr =
@@ -303,8 +306,8 @@ export default function SessionView() {
                           key={hand.id}
                           onClick={() => handleReplayHand(hand)}
                           className={`border-b border-gray-700/50 cursor-pointer hover:bg-gray-700/50 transition-colors last:border-0 ${
-                            flagged
-                              ? `border-l-2 ${TAG_BORDER[flagged.tag]}`
+                            flaggedGroup
+                              ? `border-l-2 ${TAG_BORDER[flaggedGroup.primary.tag]}`
                               : 'border-l-2 border-l-transparent'
                           }`}
                         >
@@ -334,7 +337,12 @@ export default function SessionView() {
                             {resultStr}
                           </td>
                           <td className="px-4 py-3">
-                            {flagged ? <TagBadge tag={flagged.tag} /> : null}
+                            {flaggedGroup && (
+                              <div className="flex items-center gap-1 flex-wrap">
+                                <TagBadge tag={flaggedGroup.primary.tag} />
+                                {flaggedGroup.extras.map((e) => <TagBadge key={e.tag} tag={e.tag} />)}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       )
