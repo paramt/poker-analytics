@@ -283,6 +283,13 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet, run2Stre
     .map(([shortId]) => getShownCards(hand, shortId))
     .filter(cards => cards.length >= 2)
 
+  // All players in a hand have the same number of hole cards, so derive the
+  // count from any known source: hero's cards, or any villain's shown cards.
+  const numCards = Math.max(
+    hand.holeCards.length,
+    ...villainCardsList.map(c => c.length),
+  ) || 2
+
   // Reset equity immediately when the hand changes so stale values never show.
   useEffect(() => { setEquity(null) }, [hand.id])
 
@@ -358,7 +365,6 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet, run2Stre
         const pos = hand.seatPositions[shortId]
         const currentStack = computeStackUpToStep(hand, shortId, steps, stepIdx)
         const visibleCards = isHero ? hand.holeCards : getShownCards(hand, shortId)
-        const numCards = Math.max(hand.holeCards.length, visibleCards.length) || 2
         const handDesc = visibleCards.length > 0 ? bestHandDescription(visibleCards, boardCards) : null
         const handDesc2 = showDualBoard && visibleCards.length > 0 ? bestHandDescription(visibleCards, boardCards2) : null
         const betAmount = currentBets.get(shortId) ?? 0
