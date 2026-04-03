@@ -358,7 +358,7 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet, run2Stre
         const pos = hand.seatPositions[shortId]
         const currentStack = computeStackUpToStep(hand, shortId, steps, stepIdx)
         const visibleCards = isHero ? hand.holeCards : getShownCards(hand, shortId)
-        const numCards = hand.holeCards.length || 2
+        const numCards = Math.max(hand.holeCards.length, visibleCards.length) || 2
         const handDesc = visibleCards.length > 0 ? bestHandDescription(visibleCards, boardCards) : null
         const handDesc2 = showDualBoard && visibleCards.length > 0 ? bestHandDescription(visibleCards, boardCards2) : null
         const betAmount = currentBets.get(shortId) ?? 0
