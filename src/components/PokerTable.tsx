@@ -220,8 +220,7 @@ function getShownCards(hand: Hand, shortId: string): string[] {
 }
 
 export default function PokerTable({ hand, steps, stepIdx, boardStreet, run2Street }: Props) {
-  const [flashPlayer, setFlashPlayer] = useState<string | null>(null)
-  const flashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const [activePlayer, setActivePlayer] = useState<string | null>(null)
   const [equity, setEquity] = useState<{ win: number; tie: number; lose: number } | null>(null)
   const workerRef = useRef<Worker | null>(null)
   const reqIdRef = useRef(0)
@@ -233,15 +232,10 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet, run2Stre
   }, [])
 
   useEffect(() => {
-    clearTimeout(flashTimer.current)
-    if (stepIdx === 0) { setFlashPlayer(null); return }
+    if (stepIdx === 0) { setActivePlayer(null); return }
     const { street, actionIdx } = steps[stepIdx - 1]
     const action = getStreetActions(hand, street)[actionIdx]
-    if (action?.player) {
-      setFlashPlayer(action.player)
-      flashTimer.current = setTimeout(() => setFlashPlayer(null), 700)
-    }
-    return () => clearTimeout(flashTimer.current)
+    setActivePlayer(action?.player ?? null)
   }, [stepIdx])
 
   const players = Object.entries(hand.players) // [shortId, { displayName, seat, stack }]
@@ -347,7 +341,7 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet, run2Stre
         const [betX, betY] = betChipPosition(x, y)
         const isHero = shortId === hand.heroId
         const isFolded = foldedPlayers.has(shortId)
-        const isFlashing = flashPlayer === shortId
+        const isActive = activePlayer === shortId
         const pos = hand.seatPositions[shortId]
         const currentStack = computeStackUpToStep(hand, shortId, steps, stepIdx)
         const visibleCards = isHero ? hand.holeCards : getShownCards(hand, shortId)
@@ -367,14 +361,14 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet, run2Stre
               }}
             >
               <div
-                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg text-xs border transition-all duration-300 ${
+                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg text-xs border ${
                   isFolded ? 'opacity-40' : 'opacity-100'
                 } ${
                   isHero
                     ? 'bg-emerald-700 border-emerald-400 text-white shadow-lg shadow-emerald-900'
                     : 'bg-gray-800 border-gray-600 text-gray-100'
                 } ${
-                  isFlashing ? 'ring-2 ring-yellow-300 shadow-yellow-400/40 shadow-lg' : ''
+                  isActive ? 'ring-2 ring-yellow-300 shadow-yellow-400/40 shadow-lg' : ''
                 }`}
               >
                 <div className="flex items-center gap-1">
