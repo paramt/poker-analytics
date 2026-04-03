@@ -361,7 +361,7 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet, run2Stre
               }}
             >
               <div
-                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg text-xs border ${
+                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg text-xs border transition-all duration-300 ${
                   isFolded ? 'opacity-40' : 'opacity-100'
                 } ${
                   isHero
