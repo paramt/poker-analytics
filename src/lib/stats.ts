@@ -185,6 +185,127 @@ export function buildNetTimelines(hands: Hand[]): {
   }
 }
 
+// ─── Rare hand detection ────────────────────────────────────────────────────
+
+interface ParsedCard { rank: number; suit: string }
+
+function parseCard(card: string): ParsedCard {
+  const suit = card.slice(-1)
+  const rankStr = card.slice(0, -1)
+  const rank =
+    rankStr === 'A' ? 14 :
+    rankStr === 'K' ? 13 :
+    rankStr === 'Q' ? 12 :
+    rankStr === 'J' ? 11 :
+    parseInt(rankStr)
+  return { rank, suit }
+}
+
+function evaluate5CardHand(cards: ParsedCard[]): number {
+  const ranks = cards.map(c => c.rank).sort((a, b) => b - a)
+  const suits = cards.map(c => c.suit)
+
+  const isFlush = suits.every(s => s === suits[0])
+
+  const uniqueRanks = [...new Set(ranks)].sort((a, b) => b - a)
+  let isStraight =
+    uniqueRanks.length === 5 && uniqueRanks[0] - uniqueRanks[4] === 4
+  // Wheel: A-2-3-4-5
+  if (!isStraight && uniqueRanks.length === 5 &&
+      uniqueRanks[0] === 14 && uniqueRanks[1] === 5 && uniqueRanks[4] === 2) {
+    isStraight = true
+  }
+
+  const freq = new Map<number, number>()
+  for (const r of ranks) freq.set(r, (freq.get(r) ?? 0) + 1)
+  const counts = [...freq.values()].sort((a, b) => b - a)
+
+  if (isFlush && isStraight) return 8
+  if (counts[0] === 4) return 7
+  if (counts[0] === 3 && counts[1] === 2) return 6
+  if (isFlush) return 5
+  if (isStraight) return 4
+  if (counts[0] === 3) return 3
+  if (counts[0] === 2 && counts[1] === 2) return 2
+  if (counts[0] === 2) return 1
+  return 0
+}
+
+function combinations<T>(arr: T[], k: number): T[][] {
+  if (k === 0) return [[]]
+  if (arr.length < k) return []
+  const [first, ...rest] = arr
+  return [
+    ...combinations(rest, k - 1).map(c => [first, ...c]),
+    ...combinations(rest, k),
+  ]
+}
+
+function bestHoldemRank(hole: ParsedCard[], board: ParsedCard[]): number {
+  const all = [...hole, ...board]
+  if (all.length < 5) return -1
+  let best = -1
+  for (const combo of combinations(all, 5)) {
+    const r = evaluate5CardHand(combo)
+    if (r > best) best = r
+  }
+  return best
+}
+
+function bestOmahaRank(hole: ParsedCard[], board: ParsedCard[]): number {
+  if (board.length < 3) return -1
+  let best = -1
+  for (const holePair of combinations(hole, 2)) {
+    for (const boardTriple of combinations(board, 3)) {
+      const r = evaluate5CardHand([...holePair, ...boardTriple])
+      if (r > best) best = r
+    }
+  }
+  return best
+}
+
+const HAND_NAMES = [
+  'High Card', 'One Pair', 'Two Pair', 'Three of a Kind',
+  'Straight', 'Flush', 'Full House', 'Four of a Kind', 'Straight Flush',
+]
+
+/**
+ * Tag hands where the hero made a rare hand:
+ * full house or better in Hold'em, four of a kind or better in Omaha.
+ * Game type is inferred from hole card count (2 = Hold'em, 4 = Omaha).
+ */
+export function tagRareHands(hands: Hand[]): FlaggedHand[] {
+  const result: FlaggedHand[] = []
+
+  for (const hand of hands) {
+    if (hand.holeCards.length === 0 || hand.board.length < 3) continue
+
+    const isOmaha = hand.holeCards.length === 4
+    const hole = hand.holeCards.map(parseCard)
+
+    const boards = [hand.board, ...(hand.board2 ? [hand.board2] : [])]
+    let bestRank = -1
+    for (const board of boards) {
+      const boardCards = board.map(parseCard)
+      const r = isOmaha
+        ? bestOmahaRank(hole, boardCards)
+        : bestHoldemRank(hole, boardCards)
+      if (r > bestRank) bestRank = r
+    }
+
+    const threshold = isOmaha ? 7 : 6
+    if (bestRank < threshold) continue
+
+    result.push({
+      handId: hand.id,
+      tag: 'rare',
+      summary: `Rare hand: ${HAND_NAMES[bestRank] ?? 'Strong Hand'}`,
+    })
+  }
+
+  return result
+}
+
 /**
  * Tag hands as 'bigpot' if pot ≥ 3x the session average pot.
  * This is computed client-side without Claude.

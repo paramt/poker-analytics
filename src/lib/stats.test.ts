@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeStats, tagBigPots } from './stats'
+import { computeStats, tagBigPots, tagRareHands } from './stats'
 import type { Hand, Action } from '../types'
 
 const HERO_ID = 'hero123'
@@ -150,5 +150,107 @@ describe('tagBigPots', () => {
     ]
     const flagged = tagBigPots(hands)
     expect(flagged).toHaveLength(0)
+  })
+})
+
+describe('tagRareHands', () => {
+  it('returns empty array for empty input', () => {
+    expect(tagRareHands([])).toEqual([])
+  })
+
+  it('skips hands with no hole cards', () => {
+    const hand = makeHand(1, { holeCards: [], board: ['A♠', 'A♥', 'A♦', 'K♠', 'K♥'] })
+    expect(tagRareHands([hand])).toHaveLength(0)
+  })
+
+  it('skips hands with fewer than 3 board cards', () => {
+    const hand = makeHand(1, { holeCards: ['A♠', 'A♥'], board: ['A♦', 'K♠'] })
+    expect(tagRareHands([hand])).toHaveLength(0)
+  })
+
+  it('tags a full house in holdem (2 hole cards)', () => {
+    // Hero: A♠ A♥, Board: A♦ K♠ K♥ 2♣ 3♦ → full house aces full of kings
+    const hand = makeHand(1, {
+      holeCards: ['A♠', 'A♥'],
+      board: ['A♦', 'K♠', 'K♥', '2♣', '3♦'],
+    })
+    const flagged = tagRareHands([hand])
+    expect(flagged).toHaveLength(1)
+    expect(flagged[0].tag).toBe('rare')
+    expect(flagged[0].handId).toBe(1)
+    expect(flagged[0].summary).toContain('Full House')
+  })
+
+  it('tags four of a kind in holdem', () => {
+    const hand = makeHand(2, {
+      holeCards: ['A♠', 'A♥'],
+      board: ['A♦', 'A♣', '2♠', '3♦', '5♣'],
+    })
+    const flagged = tagRareHands([hand])
+    expect(flagged).toHaveLength(1)
+    expect(flagged[0].summary).toContain('Four of a Kind')
+  })
+
+  it('tags straight flush in holdem', () => {
+    const hand = makeHand(3, {
+      holeCards: ['9♠', '8♠'],
+      board: ['7♠', '6♠', '5♠', '2♥', '3♦'],
+    })
+    const flagged = tagRareHands([hand])
+    expect(flagged).toHaveLength(1)
+    expect(flagged[0].summary).toContain('Straight Flush')
+  })
+
+  it('does NOT tag a flush in holdem (below threshold)', () => {
+    const hand = makeHand(4, {
+      holeCards: ['A♠', 'K♠'],
+      board: ['Q♠', 'J♠', '9♠', '2♥', '3♦'],
+    })
+    expect(tagRareHands([hand])).toHaveLength(0)
+  })
+
+  it('does NOT tag two pair in holdem', () => {
+    const hand = makeHand(5, {
+      holeCards: ['A♠', 'K♦'],
+      board: ['A♥', 'K♠', '2♣', '3♦', '7♠'],
+    })
+    expect(tagRareHands([hand])).toHaveLength(0)
+  })
+
+  it('tags four of a kind in omaha (4 hole cards)', () => {
+    // Omaha: must use exactly 2 hole + 3 board
+    // Hole: A♠ A♥ 2♣ 3♦, Board: A♦ A♣ K♠ Q♦ J♥
+    // Best: AA (hole) + AAK (board) → quads
+    const hand = makeHand(6, {
+      holeCards: ['A♠', 'A♥', '2♣', '3♦'],
+      board: ['A♦', 'A♣', 'K♠', 'Q♦', 'J♥'],
+    })
+    const flagged = tagRareHands([hand])
+    expect(flagged).toHaveLength(1)
+    expect(flagged[0].tag).toBe('rare')
+    expect(flagged[0].summary).toContain('Four of a Kind')
+  })
+
+  it('does NOT tag a full house in omaha (below threshold)', () => {
+    // Hole: A♠ A♥ 2♣ 3♦, Board: K♠ K♥ K♦ 7♣ 8♠
+    // Best with 2 hole + 3 board: AA + KKK = full house (rank 6) — below omaha threshold of 7
+    const hand = makeHand(7, {
+      holeCards: ['A♠', 'A♥', '2♣', '3♦'],
+      board: ['K♠', 'K♥', 'K♦', '7♣', '8♠'],
+    })
+    expect(tagRareHands([hand])).toHaveLength(0)
+  })
+
+  it('tags using board2 when run-it-twice produces a rare hand', () => {
+    // board (main) is a flush — not rare for holdem
+    // board2 gives a full house
+    const hand = makeHand(8, {
+      holeCards: ['A♠', 'A♥'],
+      board: ['2♠', '7♠', 'J♠', 'Q♠', '3♠'],   // hero has flush but not rare
+      board2: ['A♦', 'A♣', '2♣', '3♦', '5♥'],  // quads on second board
+    })
+    const flagged = tagRareHands([hand])
+    expect(flagged).toHaveLength(1)
+    expect(flagged[0].summary).toContain('Four of a Kind')
   })
 })

@@ -14,6 +14,7 @@ const TAG_COLORS: Record<AITag, string> = {
   hero: 'bg-blue-600 text-blue-100',
   laydown: 'bg-purple-600 text-purple-100',
   bigpot: 'bg-orange-600 text-orange-100',
+  rare: 'bg-emerald-600 text-emerald-100',
 }
 
 const TAG_BORDER: Record<AITag, string> = {
@@ -21,6 +22,7 @@ const TAG_BORDER: Record<AITag, string> = {
   hero: 'border-l-blue-500',
   laydown: 'border-l-purple-500',
   bigpot: 'border-l-orange-500',
+  rare: 'border-l-emerald-500',
 }
 
 function TagBadge({ tag }: { tag: AITag }) {
@@ -91,7 +93,7 @@ export default function SessionView() {
         map.set(fh.handId, { primary: fh, extraTags: [] as AITag[] })
       } else {
         const group = map.get(fh.handId)!
-        if (fh.tag !== 'bigpot') {
+        if (fh.tag !== 'bigpot' && fh.tag !== 'rare') {
           group.extraTags.push(group.primary.tag)
           group.primary = fh
         } else {

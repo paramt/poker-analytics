@@ -3,7 +3,7 @@ import { useLocation } from 'wouter'
 import { useStore } from '../store'
 import type { Session } from '../types'
 import { parseCSV, extractAllPlayers } from '../lib/parser'
-import { computeStats, tagBigPots } from '../lib/stats'
+import { computeStats, tagBigPots, tagRareHands } from '../lib/stats'
 import { saveSession, listSessions } from '../lib/db'
 import { scanHands } from '../lib/claude'
 import ApiKeyInput from './ApiKeyInput'
@@ -85,6 +85,8 @@ export default function UploadScreen() {
 
       const stats = computeStats(hands, heroId)
       const bigpotFlags = tagBigPots(hands)
+      const rareFlags = tagRareHands(hands)
+      const deterministicFlags = [...bigpotFlags, ...rareFlags].sort((a, b) => a.handId - b.handId)
 
       const heroPlayer = hands[0]?.players[heroId]
 
@@ -96,12 +98,12 @@ export default function UploadScreen() {
         heroDisplayName: heroPlayer?.displayName ?? heroId,
         hands,
         stats,
-        flaggedHands: bigpotFlags,
+        flaggedHands: deterministicFlags,
       }
 
       await saveSession(session)
       setSession(session)
-      setFlaggedHands(bigpotFlags)
+      setFlaggedHands(deterministicFlags)
       navigate(`/session/${session.id}`)
 
       // Background AI scan (fire and forget)
@@ -110,7 +112,7 @@ export default function UploadScreen() {
         scanHands(hands, heroId, apiKey, (progress) => {
           setScanState({ isScanning: true, progress })
         }).then(async ({ results: aiResults, partial: aiPartial }) => {
-          const allFlags = [...bigpotFlags, ...aiResults].sort((a, b) => a.handId - b.handId)
+          const allFlags = [...deterministicFlags, ...aiResults].sort((a, b) => a.handId - b.handId)
           setFlaggedHands(allFlags)
           setScanState({ isScanning: false, partial: aiPartial })
           await saveSession({ ...session, flaggedHands: allFlags })
@@ -143,8 +145,9 @@ export default function UploadScreen() {
 
       const stats = computeStats(hands, demoHeroId)
       const bigpotFlags = tagBigPots(hands)
-      // Merge client-computed bigpot flags with the pre-computed AI flags
-      const allFlags = [...bigpotFlags, ...DEMO_FLAGS].sort((a, b) => a.handId - b.handId)
+      const rareFlags = tagRareHands(hands)
+      // Merge client-computed deterministic flags with the pre-computed AI flags
+      const allFlags = [...bigpotFlags, ...rareFlags, ...DEMO_FLAGS].sort((a, b) => a.handId - b.handId)
 
       const heroPlayer = hands[0]?.players[demoHeroId]
 
