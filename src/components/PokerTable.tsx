@@ -276,6 +276,9 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet, run2Stre
     .map(([shortId]) => getShownCards(hand, shortId))
     .filter(cards => cards.length >= 2)
 
+  // Reset equity immediately when the hand changes so stale values never show.
+  useEffect(() => { setEquity(null) }, [hand.id])
+
   // Post equity calculation to worker when board/cards change.
   // Keyed so we don't recalculate while stepping through actions within the same street.
   const equityKey = boardCards.join(',') + '|' + hand.holeCards.join(',') + '|' + villainCardsList.map(v => v.join(',')).join(';')
