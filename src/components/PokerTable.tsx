@@ -341,6 +341,7 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
         const currentStack = computeStackUpToStep(hand, shortId, steps, stepIdx)
         const visibleCards = isHero ? hand.holeCards : getShownCards(hand, shortId)
         const handDesc = visibleCards.length > 0 ? bestHandDescription(visibleCards, boardCards) : null
+        const handDesc2 = showDualBoard && visibleCards.length > 0 ? bestHandDescription(visibleCards, boardCards2) : null
         const betAmount = currentBets.get(shortId) ?? 0
 
         return (
@@ -385,10 +386,20 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet }: Props)
                         <CardDisplay key={ci} card={card} small />
                       ))}
                     </div>
-                    {handDesc && (
+                    {handDesc && !handDesc2 && (
                       <span className={`text-[10px] font-medium ${isHero ? 'text-emerald-200' : 'text-yellow-300'}`}>
                         {handDesc}
                       </span>
+                    )}
+                    {handDesc2 && (
+                      <>
+                        <span className={`text-[10px] font-medium ${isHero ? 'text-emerald-200' : 'text-yellow-300'}`}>
+                          <span className="text-[9px] text-green-400 font-bold mr-0.5">1</span>{handDesc}
+                        </span>
+                        <span className={`text-[10px] font-medium ${isHero ? 'text-emerald-200' : 'text-yellow-300'}`}>
+                          <span className="text-[9px] text-green-400 font-bold mr-0.5">2</span>{handDesc2}
+                        </span>
+                      </>
                     )}
                   </div>
                 )}
