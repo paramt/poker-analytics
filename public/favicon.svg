@@ -1,19 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <!-- Outer ring -->
   <circle cx="32" cy="32" r="30" fill="#c0392b" stroke="#7b0e0e" stroke-width="2"/>
+  <!-- 8 notches evenly spaced, each rotated around center (32,32) -->
+  <rect x="29" y="2" width="6" height="8" rx="1" fill="white" transform="rotate(0   32 32)"/>
+  <rect x="29" y="2" width="6" height="8" rx="1" fill="white" transform="rotate(45  32 32)"/>
+  <rect x="29" y="2" width="6" height="8" rx="1" fill="white" transform="rotate(90  32 32)"/>
+  <rect x="29" y="2" width="6" height="8" rx="1" fill="white" transform="rotate(135 32 32)"/>
+  <rect x="29" y="2" width="6" height="8" rx="1" fill="white" transform="rotate(180 32 32)"/>
+  <rect x="29" y="2" width="6" height="8" rx="1" fill="white" transform="rotate(225 32 32)"/>
+  <rect x="29" y="2" width="6" height="8" rx="1" fill="white" transform="rotate(270 32 32)"/>
+  <rect x="29" y="2" width="6" height="8" rx="1" fill="white" transform="rotate(315 32 32)"/>
   <!-- Inner white ring -->
   <circle cx="32" cy="32" r="22" fill="none" stroke="white" stroke-width="3"/>
   <!-- Center circle -->
   <circle cx="32" cy="32" r="14" fill="#e74c3c"/>
-  <!-- Notches on outer ring (8 segments, alternating white blocks) -->
-  <g fill="white">
-    <rect x="29" y="2"  width="6" height="8" rx="1"/>
-    <rect x="29" y="54" width="6" height="8" rx="1"/>
-    <rect x="2"  y="29" width="8" height="6" rx="1"/>
-    <rect x="54" y="29" width="8" height="6" rx="1"/>
-    <rect x="10.5" y="7.5"  width="6" height="8" rx="1" transform="rotate(45 13.5 11.5)"/>
-    <rect x="43.5" y="7.5"  width="6" height="8" rx="1" transform="rotate(-45 46.5 11.5)"/>
-    <rect x="10.5" y="48.5" width="6" height="8" rx="1" transform="rotate(-45 13.5 52.5)"/>
-    <rect x="43.5" y="48.5" width="6" height="8" rx="1" transform="rotate(45 46.5 52.5)"/>
-  </g>
 </svg>
