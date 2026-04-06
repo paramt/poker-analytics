@@ -145,8 +145,10 @@ export function computePlayerResults(hand: Hand): Record<string, number> {
 
 /**
  * Build cumulative net timelines for all players across all hands.
- * Returns an array (one entry per hand) with each player's running total.
- * Players who don't appear in a hand carry forward their previous cumulative.
+ * Each player's series is prepended with a zero-anchor point one hand before
+ * their first appearance, so gains/losses on the first hand they play are
+ * always visible. Players present from the very first hand get a virtual
+ * "hand 0" anchor at the start.
  */
 export function buildNetTimelines(hands: Hand[]): {
   handIds: number[]
@@ -164,30 +166,55 @@ export function buildNetTimelines(hands: Hand[]): {
 
   const playerIds = Array.from(playerMeta.keys())
   const running = new Map<string, number>(playerIds.map(id => [id, 0]))
-  const series = new Map<string, (number | null)[]>(playerIds.map(id => [id, []]))
+  const rawSeries = new Map<string, (number | null)[]>(playerIds.map(id => [id, []]))
 
   for (const hand of hands) {
     const results = computePlayerResults(hand)
     for (const id of playerIds) {
       if (!(id in hand.players)) {
-        // Player wasn't at the table for this hand — emit null to create a gap
-        series.get(id)!.push(null)
+        rawSeries.get(id)!.push(null)
         continue
       }
       const prev = running.get(id) ?? 0
       const delta = results[id] ?? 0
       const next = prev + delta
       running.set(id, next)
-      series.get(id)!.push(next)
+      rawSeries.get(id)!.push(next)
     }
   }
 
+  // Extend each series with a zero-anchor one slot before the player's first
+  // appearance. The extended array has length n+1:
+  //   index 0        → virtual "hand 0" (before the first real hand)
+  //   index i+1      → real hand index i
+  // For a player first appearing at real-hand index k:
+  //   k === 0 → anchor at index 0 (virtual hand 0), real values at 1..n
+  //   k  >  0 → null at 0..k-1, anchor at index k (= real hand k-1), real values at k+1..n
+  const n = hands.length
+  const extendedSeries = new Map<string, (number | null)[]>()
+
+  for (const id of playerIds) {
+    const raw = rawSeries.get(id)!
+    const firstIdx = raw.findIndex(v => v !== null)
+    const extended: (number | null)[] = new Array(n + 1).fill(null)
+
+    if (firstIdx !== -1) {
+      extended[firstIdx] = 0 // zero-anchor (at virtual slot 0, or at real hand firstIdx-1)
+      for (let i = firstIdx; i < n; i++) extended[i + 1] = raw[i]
+    }
+
+    extendedSeries.set(id, extended)
+  }
+
+  // Prepend virtual hand ID 0; real hand IDs follow at indices 1..n
+  const handIds = [0, ...hands.map(h => h.id)]
+
   return {
-    handIds: hands.map(h => h.id),
+    handIds,
     players: playerIds.map(id => ({
       id,
       displayName: playerMeta.get(id)!,
-      cumulative: series.get(id)!,
+      cumulative: extendedSeries.get(id)!,
     })),
   }
 }

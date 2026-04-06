@@ -50,7 +50,7 @@ export default function NetTimeline({ hands, heroId }: Props) {
 
   if (hands.length < 2) return null
 
-  const n = hands.length
+  const n = timeline.handIds.length
   const allValues = ordered.flatMap(p => p.cumulative).filter((v): v is number => v !== null)
   const rawMin = Math.min(0, ...allValues)
   const rawMax = Math.max(0, ...allValues)
