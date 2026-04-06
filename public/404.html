@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // Save the full path (minus the base) and redirect to index
+      var base = '/poker-analytics';
+      var path = window.location.pathname.slice(base.length) + window.location.search + window.location.hash;
+      sessionStorage.setItem('spa_redirect', path || '/');
+      window.location.replace(base + '/');
+    </script>
+  </head>
+  <body></body>
+</html>
