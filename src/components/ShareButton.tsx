@@ -11,7 +11,8 @@ export default function ShareButton({ hand }: Props) {
 
   function handleCopy() {
     const encoded = encodeHand(hand)
-    const url = `${window.location.origin}?hand=${encoded}`
+    const base = import.meta.env.BASE_URL.replace(/\/$/, '')
+    const url = `${window.location.origin}${base}/?hand=${encoded}`
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
