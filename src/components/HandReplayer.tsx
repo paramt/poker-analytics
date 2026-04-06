@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useLocation } from 'wouter'
+import { useLocation, Link } from 'wouter'
 import { useStore } from '../store'
 import type { Hand } from '../types'
 import PokerTable from './PokerTable'
@@ -195,7 +195,7 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           {!hideBack && (
-            <a
+            <Link
               href={backHref ?? '#'}
               onClick={backHref ? undefined : (e) => { e.preventDefault(); window.history.back() }}
               className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-100 transition-colors"
@@ -211,11 +211,11 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
               Back
-            </a>
+            </Link>
           )}
           {(prevHandId || nextHandId) && (
             <div className="flex items-center gap-1">
-              <a
+              <Link
                 href={prevHandId ?? '#'}
                 aria-disabled={!prevHandId}
                 className={`flex items-center px-2 py-1 rounded text-sm transition-colors ${prevHandId ? 'text-gray-400 hover:text-gray-100 hover:bg-gray-700' : 'text-gray-700 pointer-events-none'}`}
@@ -223,8 +223,8 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
-              </a>
-              <a
+              </Link>
+              <Link
                 href={nextHandId ?? '#'}
                 aria-disabled={!nextHandId}
                 className={`flex items-center px-2 py-1 rounded text-sm transition-colors ${nextHandId ? 'text-gray-400 hover:text-gray-100 hover:bg-gray-700' : 'text-gray-700 pointer-events-none'}`}
@@ -232,7 +232,7 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
-              </a>
+              </Link>
             </div>
           )}
           <div className="flex items-center gap-2">
