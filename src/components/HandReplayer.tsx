@@ -108,6 +108,7 @@ interface Props {
   prevHandId?: string
   nextHandId?: string
   sharedView?: boolean
+  flaggedMode?: boolean
 }
 
 function useIsDesktop() {
@@ -121,7 +122,7 @@ function useIsDesktop() {
   return isDesktop
 }
 
-export default function HandReplayer({ hand, hideBack = false, backHref, prevHandId, nextHandId, sharedView = false }: Props) {
+export default function HandReplayer({ hand, hideBack = false, backHref, prevHandId, nextHandId, sharedView = false, flaggedMode = false }: Props) {
   const [, navigate] = useLocation()
   const { flaggedHands } = useStore()
   const handFlags = flaggedHands.filter((f) => f.handId === hand.id)
@@ -260,6 +261,24 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
         </div>
         <ShareButton hand={hand} />
       </div>
+
+      {/* Flagged mode banner */}
+      {flaggedMode && (
+        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-amber-900/30 border border-amber-700/50">
+          <div className="flex items-center gap-2 text-sm text-amber-300">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 01.707 1.707L13.414 9l3.293 3.293A1 1 0 0116 14H4a1 1 0 01-1-1V5z" clipRule="evenodd" />
+            </svg>
+            Navigating flagged hands only
+          </div>
+          <button
+            onClick={() => navigate(window.location.pathname)}
+            className="text-xs text-amber-400 hover:text-amber-200 transition-colors px-2 py-0.5 rounded hover:bg-amber-900/50"
+          >
+            Exit
+          </button>
+        </div>
+      )}
 
       {/* AI Feedback */}
       {handFlags.length > 0 && (

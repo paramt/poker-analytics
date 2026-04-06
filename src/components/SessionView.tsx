@@ -83,7 +83,8 @@ export default function SessionView() {
   }
 
   function handleReplayHand(hand: Hand) {
-    navigate(`/session/${session!.id}/hand/${hand.id}`)
+    const suffix = activeTab === 'flagged' ? '?flagged=1' : ''
+    navigate(`/session/${session!.id}/hand/${hand.id}${suffix}`)
   }
 
   const flaggedIds = new Set(flaggedHands.map((f) => f.handId))
