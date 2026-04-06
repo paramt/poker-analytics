@@ -114,7 +114,7 @@ export default function SessionView() {
 
   const tabs = [
     { id: 'all' as const, label: `All Hands (${hands.length})` },
-    { id: 'flagged' as const, label: `Flagged (${flaggedHands.length})` },
+    { id: 'flagged' as const, label: `Flagged (${flaggedIds.size})` },
     { id: 'stats' as const, label: 'My Stats' },
   ]
 
