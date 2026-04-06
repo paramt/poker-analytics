@@ -298,11 +298,11 @@ export default function PokerTable({ hand, steps, stepIdx, boardStreet, run2Stre
   const equityKey = boardCards.join(',') + '|' + hand.holeCards.join(',') + '|' + villainCardsList.map(v => v.join(',')).join(';')
   useEffect(() => {
     const worker = workerRef.current
+    const reqId = ++reqIdRef.current
     if (!worker || hand.holeCards.length < 2 || villainCardsList.length === 0 || boardCards.length < 3) {
       setEquity(null)
       return
     }
-    const reqId = ++reqIdRef.current
     worker.onmessage = (e: MessageEvent) => {
       if (e.data.reqId === reqId) setEquity(e.data.result)
     }
