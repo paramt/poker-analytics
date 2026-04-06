@@ -11,7 +11,7 @@ import { loadSession } from './lib/db'
 
 function HandPage() {
   const { id, handId } = useParams<{ id: string; handId: string }>()
-  const { session, setSession, setFlaggedHands, flaggedHands } = useStore()
+  const { session, setSession, setFlaggedHands, flaggedHands, flaggedNavMode } = useStore()
   const [loading, setLoading] = useState(false)
   const [missing, setMissing] = useState(false)
 
@@ -29,18 +29,16 @@ function HandPage() {
     })
   }, [id, handId])
 
-  const isFlaggedMode = new URLSearchParams(window.location.search).get('flagged') === '1'
   const flaggedIds = new Set(flaggedHands.map(f => f.handId))
 
   const hands = session?.hands ?? []
   const handIdx = hands.findIndex(h => String(h.id) === handId)
   const hand = handIdx >= 0 ? hands[handIdx] : undefined
 
-  const navigableHands = isFlaggedMode ? hands.filter(h => flaggedIds.has(h.id)) : hands
+  const navigableHands = flaggedNavMode ? hands.filter(h => flaggedIds.has(h.id)) : hands
   const navIdx = navigableHands.findIndex(h => String(h.id) === handId)
   const prevHand = navIdx > 0 ? navigableHands[navIdx - 1] : undefined
   const nextHand = navIdx >= 0 && navIdx < navigableHands.length - 1 ? navigableHands[navIdx + 1] : undefined
-  const flagSuffix = isFlaggedMode ? '?flagged=1' : ''
 
   if (loading) return <Spinner />
   if (missing || !hand) return <NotFound message="Hand not found." backTo={`/session/${id}`} />
@@ -51,9 +49,9 @@ function HandPage() {
         <HandReplayer
           hand={hand}
           backHref={`/session/${id}`}
-          prevHandId={prevHand ? `/session/${id}/hand/${prevHand.id}${flagSuffix}` : undefined}
-          nextHandId={nextHand ? `/session/${id}/hand/${nextHand.id}${flagSuffix}` : undefined}
-          flaggedMode={isFlaggedMode}
+          prevHandId={prevHand ? `/session/${id}/hand/${prevHand.id}` : undefined}
+          nextHandId={nextHand ? `/session/${id}/hand/${nextHand.id}` : undefined}
+          flaggedMode={flaggedNavMode}
         />
       </div>
     </div>

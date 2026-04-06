@@ -28,6 +28,10 @@ interface AppState {
   // Active tab in session view
   activeTab: 'all' | 'flagged' | 'stats'
   setActiveTab: (tab: 'all' | 'flagged' | 'stats') => void
+
+  // Flagged-only hand navigation mode
+  flaggedNavMode: boolean
+  setFlaggedNavMode: (v: boolean) => void
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -62,4 +66,7 @@ export const useStore = create<AppState>((set) => ({
 
   activeTab: 'all',
   setActiveTab: (tab) => set({ activeTab: tab }),
+
+  flaggedNavMode: false,
+  setFlaggedNavMode: (v) => set({ flaggedNavMode: v }),
 }))

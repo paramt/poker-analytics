@@ -124,7 +124,7 @@ function useIsDesktop() {
 
 export default function HandReplayer({ hand, hideBack = false, backHref, prevHandId, nextHandId, sharedView = false, flaggedMode = false }: Props) {
   const [, navigate] = useLocation()
-  const { flaggedHands } = useStore()
+  const { flaggedHands, setFlaggedNavMode } = useStore()
   const handFlags = flaggedHands.filter((f) => f.handId === hand.id)
     .sort((a, b) => {
       // LLM tags first, then deterministic
@@ -272,7 +272,7 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
             Navigating flagged hands only
           </div>
           <button
-            onClick={() => navigate(window.location.pathname)}
+            onClick={() => setFlaggedNavMode(false)}
             className="text-xs text-amber-400 hover:text-amber-200 transition-colors px-2 py-0.5 rounded hover:bg-amber-900/50"
           >
             Exit

@@ -72,6 +72,7 @@ export default function SessionView() {
     scanPartial,
     activeTab,
     setActiveTab,
+    setFlaggedNavMode,
   } = useStore()
 
   if (!session) return null
@@ -83,8 +84,8 @@ export default function SessionView() {
   }
 
   function handleReplayHand(hand: Hand) {
-    const suffix = activeTab === 'flagged' ? '?flagged=1' : ''
-    navigate(`/session/${session!.id}/hand/${hand.id}${suffix}`)
+    setFlaggedNavMode(activeTab === 'flagged')
+    navigate(`/session/${session!.id}/hand/${hand.id}`)
   }
 
   const flaggedIds = new Set(flaggedHands.map((f) => f.handId))
