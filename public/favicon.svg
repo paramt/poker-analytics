@@ -2,14 +2,14 @@
   <!-- Outer ring -->
   <circle cx="32" cy="32" r="30" fill="#c0392b" stroke="#7b0e0e" stroke-width="2"/>
   <!-- 8 notches evenly spaced, each rotated around center (32,32) -->
-  <rect x="29" y="4" width="6" height="8" rx="1" fill="white" transform="rotate(0   32 32)"/>
-  <rect x="29" y="4" width="6" height="8" rx="1" fill="white" transform="rotate(45  32 32)"/>
-  <rect x="29" y="4" width="6" height="8" rx="1" fill="white" transform="rotate(90  32 32)"/>
-  <rect x="29" y="4" width="6" height="8" rx="1" fill="white" transform="rotate(135 32 32)"/>
-  <rect x="29" y="4" width="6" height="8" rx="1" fill="white" transform="rotate(180 32 32)"/>
-  <rect x="29" y="4" width="6" height="8" rx="1" fill="white" transform="rotate(225 32 32)"/>
-  <rect x="29" y="4" width="6" height="8" rx="1" fill="white" transform="rotate(270 32 32)"/>
-  <rect x="29" y="4" width="6" height="8" rx="1" fill="white" transform="rotate(315 32 32)"/>
+  <rect x="29" y="4" width="6" height="6" rx="1" fill="white" transform="rotate(0   32 32)"/>
+  <rect x="29" y="4" width="6" height="6" rx="1" fill="white" transform="rotate(45  32 32)"/>
+  <rect x="29" y="4" width="6" height="6" rx="1" fill="white" transform="rotate(90  32 32)"/>
+  <rect x="29" y="4" width="6" height="6" rx="1" fill="white" transform="rotate(135 32 32)"/>
+  <rect x="29" y="4" width="6" height="6" rx="1" fill="white" transform="rotate(180 32 32)"/>
+  <rect x="29" y="4" width="6" height="6" rx="1" fill="white" transform="rotate(225 32 32)"/>
+  <rect x="29" y="4" width="6" height="6" rx="1" fill="white" transform="rotate(270 32 32)"/>
+  <rect x="29" y="4" width="6" height="6" rx="1" fill="white" transform="rotate(315 32 32)"/>
   <!-- Inner white ring -->
   <circle cx="32" cy="32" r="22" fill="none" stroke="white" stroke-width="3"/>
   <!-- Center circle -->
