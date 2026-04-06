@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Switch, Route, useParams } from 'wouter'
+import { Router, Switch, Route, useParams } from 'wouter'
 import { useStore } from './store'
 import UploadScreen from './components/UploadScreen'
 import SessionView from './components/SessionView'
@@ -114,10 +114,12 @@ export default function App() {
   }
 
   return (
-    <Switch>
-      <Route path="/session/:id/hand/:handId" component={HandPage} />
-      <Route path="/session/:id" component={SessionPage} />
-      <Route component={UploadScreen} />
-    </Switch>
+    <Router base="/poker-analytics">
+      <Switch>
+        <Route path="/session/:id/hand/:handId" component={HandPage} />
+        <Route path="/session/:id" component={SessionPage} />
+        <Route component={UploadScreen} />
+      </Switch>
+    </Router>
   )
 }
