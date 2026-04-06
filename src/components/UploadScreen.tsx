@@ -182,7 +182,7 @@ export default function UploadScreen() {
         <div className="text-center">
           <div className="text-4xl mb-2">♠</div>
           <h1 className="text-3xl font-bold text-gray-100">Poker Analytics</h1>
-          <p className="text-gray-400 mt-1 text-sm">Import your PokerNow hand history for AI-powered review</p>
+          <p className="text-gray-400 mt-1 text-sm">Import your PokerNow hand history for review and analysis</p>
         </div>
 
         {/* Drop Zone */}
