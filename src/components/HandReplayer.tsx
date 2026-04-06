@@ -282,7 +282,7 @@ export default function HandReplayer({ hand, hideBack = false, backHref, prevHan
 
       {/* AI Feedback */}
       {handFlags.length > 0 && (
-        <div className="flex flex-col gap-2 p-3 rounded-lg bg-gray-800 border border-gray-700">
+        <div className="flex flex-col gap-2 p-3 rounded-lg bg-gray-800 border border-gray-700 h-24 overflow-y-auto">
           {handFlags.map((f) => (
             <div key={f.tag} className="flex items-start gap-3">
               <span

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Router, Switch, Route, useParams } from 'wouter'
+import { Router, Switch, Route, useParams, Link } from 'wouter'
 import { useStore } from './store'
 import UploadScreen from './components/UploadScreen'
 import SessionView from './components/SessionView'
@@ -40,7 +40,7 @@ function HandPage() {
   const prevHand = navIdx > 0 ? navigableHands[navIdx - 1] : undefined
   const nextHand = navIdx >= 0 && navIdx < navigableHands.length - 1 ? navigableHands[navIdx + 1] : undefined
 
-  if (loading) return <Spinner />
+  if (loading || (!session && !missing)) return <Spinner />
   if (missing || !hand) return <NotFound message="Hand not found." backTo={`/session/${id}`} />
 
   return (
@@ -80,7 +80,7 @@ function SessionPage() {
     })
   }, [id])
 
-  if (loading) return <Spinner />
+  if (loading || (!session && !missing)) return <Spinner />
   if (missing) return <NotFound message="Session not found." backTo="/" />
 
   return <SessionView />
@@ -100,7 +100,7 @@ function NotFound({ message, backTo }: { message: string; backTo: string }) {
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center gap-4 text-gray-400">
       <p>{message}</p>
-      <a href={backTo} className="text-emerald-400 hover:underline text-sm">Go back</a>
+      <Link href={backTo} className="text-emerald-400 hover:underline text-sm">Go back</Link>
     </div>
   )
 }
