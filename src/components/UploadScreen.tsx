@@ -135,7 +135,7 @@ export default function UploadScreen() {
     setParseError(null)
 
     try {
-      const response = await fetch('/demo.csv')
+      const response = await fetch('demo.csv')
       if (!response.ok) throw new Error('Failed to fetch demo data.')
       const csvText = await response.text()
 
