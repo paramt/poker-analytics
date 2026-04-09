@@ -21,6 +21,93 @@ interface HandSummary {
   river?: [string, string][]
   pot: number
   result: number
+  opponents?: Record<string, string>   // position → revealed hole cards e.g. "AcKd"
+  madeHands?: {
+    flop?: Record<string, string>      // position → best hand description
+    turn?: Record<string, string>
+    river?: Record<string, string>
+  }
+}
+
+// ─── Hand evaluator ───────────────────────────────────────────────────────
+
+interface ParsedCard { rank: number; suit: string }
+
+function parseCard(s: string): ParsedCard | null {
+  const cleaned = s.trim()
+  if (!cleaned) return null
+  const suitMap: Record<string, string> = { '♠': 's', '♥': 'h', '♦': 'd', '♣': 'c', 's': 's', 'h': 'h', 'd': 'd', 'c': 'c' }
+  const lastChar = cleaned.slice(-1)
+  const suit = suitMap[lastChar]
+  if (!suit) return null
+  const rankStr = cleaned.slice(0, -1)
+  const rankMap: Record<string, number> = { 'A': 14, 'K': 13, 'Q': 12, 'J': 11, 'T': 10, '10': 10 }
+  const rank = rankMap[rankStr] ?? parseInt(rankStr)
+  if (isNaN(rank) || rank < 2 || rank > 14) return null
+  return { rank, suit }
+}
+
+function findStraightHigh(uniqueRanks: number[]): number | null {
+  const ranks = [...uniqueRanks]
+  if (ranks.includes(14)) ranks.push(1)
+  ranks.sort((a, b) => b - a)
+  for (let i = 0; i <= ranks.length - 5; i++) {
+    let ok = true
+    for (let j = 1; j < 5; j++) {
+      if (ranks[i + j] !== ranks[i] - j) { ok = false; break }
+    }
+    if (ok) return ranks[i] === 1 ? 5 : ranks[i]
+  }
+  return null
+}
+
+function describeBestHand(holeCards: string[], boardCards: string[]): string {
+  const cards = [...holeCards, ...boardCards].map(parseCard).filter((c): c is ParsedCard => c !== null)
+  if (cards.length === 0) return ''
+
+  const bySuit = new Map<string, number[]>()
+  const byRank = new Map<number, number>()
+  for (const c of cards) {
+    if (!bySuit.has(c.suit)) bySuit.set(c.suit, [])
+    bySuit.get(c.suit)!.push(c.rank)
+    byRank.set(c.rank, (byRank.get(c.rank) ?? 0) + 1)
+  }
+
+  const RANK_NAME: Record<number, string> = {
+    14: 'A', 13: 'K', 12: 'Q', 11: 'J', 10: 'T', 9: '9', 8: '8', 7: '7', 6: '6', 5: '5', 4: '4', 3: '3', 2: '2'
+  }
+  const rn = (r: number) => RANK_NAME[r] ?? String(r)
+  const rankEntries = [...byRank.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])
+  const uniqueRanks = [...new Set(cards.map(c => c.rank))].sort((a, b) => b - a)
+
+  let flushSuit: string | null = null
+  for (const [suit, ranks] of bySuit) {
+    if (ranks.length >= 5) { flushSuit = suit; break }
+  }
+
+  const straightHigh = findStraightHigh(uniqueRanks)
+
+  if (flushSuit) {
+    const flushUniqueRanks = [...new Set(bySuit.get(flushSuit)!)].sort((a, b) => b - a)
+    const sfHigh = findStraightHigh(flushUniqueRanks)
+    if (sfHigh !== null) return sfHigh === 14 ? 'royal flush' : `str-flush ${rn(sfHigh)}-high`
+  }
+  if (rankEntries[0][1] >= 4) return `quads ${rn(rankEntries[0][0])}s`
+  if (rankEntries[0][1] >= 3 && (rankEntries[1]?.[1] ?? 0) >= 2)
+    return `boat ${rn(rankEntries[0][0])}s/${rn(rankEntries[1][0])}s`
+  if (flushSuit) {
+    const top = bySuit.get(flushSuit)!.sort((a, b) => b - a).slice(0, 5)
+    return `flush ${top.map(rn).join('')}`
+  }
+  if (straightHigh !== null) return `straight ${rn(straightHigh)}-high`
+  if (rankEntries[0][1] >= 3) return `trips ${rn(rankEntries[0][0])}s`
+  if (rankEntries[0][1] >= 2 && (rankEntries[1]?.[1] ?? 0) >= 2)
+    return `2pair ${rn(rankEntries[0][0])}/${rn(rankEntries[1][0])}`
+  if (rankEntries[0][1] >= 2) {
+    const kicker = rankEntries.find(([r, c]) => c === 1 && r !== rankEntries[0][0])?.[0]
+    return `pair ${rn(rankEntries[0][0])}${kicker !== undefined ? `/${rn(kicker)}k` : ''}`
+  }
+  return `hi-card ${rn(uniqueRanks[0])}`
 }
 
 function sanitize(s: string): string {
@@ -38,6 +125,10 @@ function actionCode(type: string, amount?: number, allin?: boolean): string {
     case 'post_bb': return `bb${amount ?? 0}`
     default: return '?'
   }
+}
+
+function fmtCards(cards: string[]): string {
+  return cards.map(c => c.replace('♠', 's').replace('♥', 'h').replace('♦', 'd').replace('♣', 'c')).join('')
 }
 
 function summarizeHand(hand: Hand): HandSummary | null {
@@ -58,10 +149,51 @@ function summarizeHand(hand: Hand): HandSummary | null {
         return [pos, actionCode(a.type, a.amount, a.allin)] as [string, string]
       })
 
+  // Collect revealed hole cards from show actions across all streets
+  const showCards = new Map<string, string[]>() // shortId → cards
+  for (const actions of [hand.preflop, hand.flop, hand.turn, hand.river]) {
+    for (const a of actions) {
+      if (a.type === 'show' && a.cards && a.cards.length > 0 && a.player !== hand.heroId) {
+        showCards.set(a.player, a.cards)
+      }
+    }
+  }
+
+  // Build opponents map: position → formatted hole cards
+  const opponents: Record<string, string> = {}
+  for (const [shortId, cards] of showCards) {
+    const pos = hand.seatPositions[shortId]
+    if (pos) opponents[pos] = fmtCards(cards)
+  }
+
+  // Build known hole cards per position for made hand computation
+  const knownHands = new Map<string, string[]>() // position → raw card strings
+  if (hand.holeCards.length > 0) knownHands.set(heroPos, hand.holeCards)
+  for (const [shortId, cards] of showCards) {
+    const pos = hand.seatPositions[shortId]
+    if (pos) knownHands.set(pos, cards)
+  }
+
+  // Compute made hands per street
+  const madeHands: NonNullable<HandSummary['madeHands']> = {}
+  function computeStreetHands(boardSlice: string[]): Record<string, string> | undefined {
+    if (boardSlice.length === 0 || knownHands.size === 0) return undefined
+    const result: Record<string, string> = {}
+    for (const [pos, hole] of knownHands) {
+      const desc = describeBestHand(hole, boardSlice)
+      if (desc) result[pos] = desc
+    }
+    return Object.keys(result).length > 0 ? result : undefined
+  }
+
+  if (hand.board.length >= 3) madeHands.flop = computeStreetHands(hand.board.slice(0, 3))
+  if (hand.board.length >= 4) madeHands.turn = computeStreetHands(hand.board.slice(0, 4))
+  if (hand.board.length >= 5) madeHands.river = computeStreetHands(hand.board.slice(0, 5))
+
   const summary: HandSummary = {
     id: hand.id,
     hero: heroPos,
-    cards: hand.holeCards.map(c => c.replace('♠', 's').replace('♥', 'h').replace('♦', 'd').replace('♣', 'c')).join(''),
+    cards: fmtCards(hand.holeCards),
     stacks,
     pot: hand.pot,
     result: hand.result,
@@ -88,6 +220,9 @@ function summarizeHand(hand: Hand): HandSummary | null {
   if (hand.turn.length > 0) summary.turn = mapActions(hand.turn)
   if (hand.river.length > 0) summary.river = mapActions(hand.river)
 
+  if (Object.keys(opponents).length > 0) summary.opponents = opponents
+  if (Object.keys(madeHands).length > 0) summary.madeHands = madeHands
+
   return summary
 }
 
@@ -103,14 +238,19 @@ Return ONLY a JSON array (no markdown, no explanation) in this exact format:
 
 Tags (use exactly one per flagged hand):
 - "hero": Hero made a call (not a bet or raise) that was genuinely difficult at the time — facing a large bet, big shove, or credible aggression — with a hand that most players would fold (e.g. ace-high, middle pair, weak two pair). The call turned out to be correct: hero's hand was good, or they caught a bluff. All three must be true: (1) it was a call, (2) it was hard to make, (3) it was right.
-- "laydown": Hero folded a genuinely strong hand (e.g. top pair, overpair, set, straight) facing action that credibly represented a better hand. The fold saved significant chips and required real discipline.
+- "laydown": Hero folded a genuinely strong hand (e.g. top pair, overpair, set, straight) facing action that credibly represented a better hand. The fold saved significant chips and required real discipline. IMPORTANT: only tag as laydown if hero's madeHands shows a strong made hand at the time of the fold. Do NOT tag as laydown if hero's made hand was weak (bottom pair, low pair, underpair, draw, etc.).
 - "learning": A clear mistake — wrong sizing, spewing chips with a bluff on the wrong board, calling off a stack with a dominated hand, or missing obvious value. Focus on decisions that cost meaningful EV, not minor leaks.
 - "notable": Something genuinely interesting or unusual that doesn't fit the other tags — e.g. a cooler (set over set, nut flush vs straight flush), two players sharing the same hole cards, everyone playing the board, a wild run-out, a perfectly executed bluff or hero call worth sharing. Use sparingly; only flag if it's truly remarkable.
+
+Context fields in each hand:
+- "opponents": revealed hole cards of opponents (from showdowns). Use this to verify what villain actually held — e.g. if villain had a bluff, laydown was a mistake; if villain had a monster, hero's fold was correct.
+- "madeHands": best 5-card hand for hero and any revealed opponents at the flop, turn, and river. Use these to verify hand strength claims — e.g. confirm hero actually had a strong hand before tagging "laydown", or check if a "hero call" was truly difficult given hero's made hand.
 
 Rules:
 - Only flag hands where hero saw a flop (preflop folds are almost never notable).
 - Do NOT flag a hand as "hero" for a bet, raise, or bluff-catch with a strong hand — it must be a call, it must have been hard, and it must have been correct. Winning a hand is not enough.
-- Do NOT flag a hand as "laydown" if hero folded preflop or folded a weak hand — the fold must have sacrificed real showdown equity.
+- Do NOT flag a hand as "laydown" if hero folded preflop or folded a weak hand — the fold must have sacrificed real showdown equity. Always check madeHands to verify hero had a strong made hand (top pair+, overpair, set, straight, flush, etc.) at the time of the fold.
+- When opponents are revealed, use their actual hole cards to verify: did hero's call beat the villain? Did hero's fold dodge a better hand? Was a bluff correctly identified?
 - Do NOT use "notable" as a fallback for hands that are merely above average — it should be rare and genuinely remarkable.
 - Skip routine hands (standard c-bets, obvious folds, clear value bets). Return [] if nothing qualifies.
 
