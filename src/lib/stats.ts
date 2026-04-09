@@ -267,7 +267,9 @@ export function computeAllPlayerStats(hands: Hand[]): Array<{
 
       if (hand.preflop.some(a => a.player === playerId && a.type === 'raise')) pfrCount++
 
-      if (hand.board.length >= 3) {
+      const sawFlop = hand.board.length >= 3 &&
+        !hand.preflop.some(a => a.player === playerId && a.type === 'fold')
+      if (sawFlop) {
         wtsdDenom++
         const allActions = [...hand.preflop, ...hand.flop, ...hand.turn, ...hand.river]
         if (allActions.some(a => a.player === playerId && a.type === 'show')) wtsdNum++
