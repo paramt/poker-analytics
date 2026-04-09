@@ -255,11 +255,6 @@ export default function UploadScreen() {
           </div>
         )}
 
-        {/* API Key */}
-        <div className="bg-gray-800 rounded-xl p-4">
-          <ApiKeyInput />
-        </div>
-
         {/* Error */}
         {parseError && (
           <div className="bg-red-900/40 border border-red-700 text-red-300 rounded-xl px-4 py-3 text-sm">
@@ -267,7 +262,7 @@ export default function UploadScreen() {
           </div>
         )}
 
-        {/* Start button */}
+        {/* Analyze button */}
         <button
           disabled={!canStart || isStarting}
           onClick={handleStart}
@@ -277,8 +272,13 @@ export default function UploadScreen() {
               : 'bg-gray-700 text-gray-500 cursor-not-allowed'
           }`}
         >
-          {isStarting ? 'Loading session…' : 'Start Session'}
+          {isStarting ? 'Loading session…' : 'Analyze Session'}
         </button>
+
+        {/* API Key (optional) */}
+        <div className="bg-gray-800 rounded-xl p-4">
+          <ApiKeyInput />
+        </div>
 
         {/* Try Demo */}
         <div className="flex items-center justify-center gap-3">

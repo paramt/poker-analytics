@@ -5,9 +5,13 @@ export default function ApiKeyInput() {
 
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-sm font-medium text-gray-300" htmlFor="api-key-input">
-        Claude API Key
-      </label>
+      <div className="flex items-center gap-2">
+        <label className="text-sm font-medium text-gray-300" htmlFor="api-key-input">
+          Claude API Key
+        </label>
+        <span className="text-xs text-gray-500 bg-gray-700 px-1.5 py-0.5 rounded">optional</span>
+      </div>
+      <p className="text-xs text-gray-500 -mt-0.5">Add your key to enable AI-powered hand analysis</p>
       <input
         id="api-key-input"
         type="password"
