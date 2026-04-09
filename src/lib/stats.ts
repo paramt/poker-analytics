@@ -31,7 +31,7 @@ function heroPFR(hand: Hand): boolean {
  * Used as the WTSD denominator.
  */
 function heroSawFlop(hand: Hand): boolean {
-  if (hand.holeCards.length === 0) return false
+  if (!(hand.heroId in hand.players)) return false
   if (hand.board.length < 3) return false
   return !hand.preflop.some(a => a.player === hand.heroId && a.type === 'fold')
 }
@@ -55,7 +55,7 @@ function computeAF(hands: Hand[], heroId: string): number {
   let calls = 0
 
   for (const hand of hands) {
-    if (hand.holeCards.length === 0) continue
+    if (!(hand.heroId in hand.players)) continue
     const postflop = [...hand.flop, ...hand.turn, ...hand.river]
     for (const action of postflop) {
       if (action.player !== heroId) continue
@@ -84,7 +84,7 @@ export function computeStats(hands: Hand[], heroId: string): SessionStats {
   let net = 0
 
   for (const hand of hands) {
-    const dealtIn = hand.holeCards.length > 0
+    const dealtIn = hand.heroId in hand.players
     if (!dealtIn) continue
     handsDealtIn++
     if (heroVPIP(hand)) vpipCount++
