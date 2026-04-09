@@ -3,6 +3,7 @@ import { useStore } from '../store'
 import type { Hand, AITag, FlaggedHand } from '../types'
 import StatsBar from './StatsBar'
 import NetTimeline from './NetTimeline'
+import { computeAllPlayerStats } from '../lib/stats'
 
 function suitColor(card: string): string {
   if (card.includes('♥') || card.includes('♦')) return 'text-red-400'
@@ -115,7 +116,7 @@ export default function SessionView() {
   const tabs = [
     { id: 'all' as const, label: `All Hands (${hands.length})` },
     { id: 'flagged' as const, label: `Flagged (${flaggedIds.size})` },
-    { id: 'stats' as const, label: 'My Stats' },
+    { id: 'stats' as const, label: 'Stats' },
   ]
 
   return (
@@ -199,38 +200,85 @@ export default function SessionView() {
         <div className="max-w-6xl mx-auto">
 
           {/* Stats tab */}
-          {activeTab === 'stats' && (
-            <div className="flex flex-col gap-6">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                <BigStatTile
-                  label="Net"
-                  value={stats.net >= 0 ? `+${stats.net}` : `${stats.net}`}
-                  sub="Chips won or lost"
-                />
-                <BigStatTile
-                  label="VPIP"
-                  value={`${stats.vpip}%`}
-                  sub="Voluntarily put $ in pot (preflop). 20–30% is typical."
-                />
-                <BigStatTile
-                  label="PFR"
-                  value={`${stats.pfr}%`}
-                  sub="Preflop raise %. Should be close to VPIP."
-                />
-                <BigStatTile
-                  label="AF"
-                  value={`${stats.af}`}
-                  sub="Aggression factor postflop. >2 is aggressive."
-                />
-                <BigStatTile
-                  label="WTSD"
-                  value={`${stats.wtsd}%`}
-                  sub="Went to showdown %. 25–35% is typical."
-                />
+          {activeTab === 'stats' && (() => {
+            const allPlayerStats = computeAllPlayerStats(hands).sort((a, b) => b.net - a.net)
+            return (
+              <div className="flex flex-col gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                  <BigStatTile
+                    label="Net"
+                    value={stats.net >= 0 ? `+${stats.net}` : `${stats.net}`}
+                    sub="Chips won or lost"
+                  />
+                  <BigStatTile
+                    label="VPIP"
+                    value={`${stats.vpip}%`}
+                    sub="Voluntarily put $ in pot (preflop). 20–30% is typical."
+                  />
+                  <BigStatTile
+                    label="PFR"
+                    value={`${stats.pfr}%`}
+                    sub="Preflop raise %. Should be close to VPIP."
+                  />
+                  <BigStatTile
+                    label="AF"
+                    value={`${stats.af}`}
+                    sub="Aggression factor postflop. >2 is aggressive."
+                  />
+                  <BigStatTile
+                    label="WTSD"
+                    value={`${stats.wtsd}%`}
+                    sub="Went to showdown %. 25–35% is typical."
+                  />
+                </div>
+                <NetTimeline hands={hands} heroId={session.heroId} />
+                <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
+                  <div className="px-4 py-3 border-b border-gray-700">
+                    <h3 className="text-sm font-semibold text-gray-300">All Players</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm min-w-[600px]">
+                      <thead>
+                        <tr className="border-b border-gray-700 text-xs text-gray-400 uppercase tracking-wide">
+                          <th className="text-left px-4 py-3">Player</th>
+                          <th className="text-right px-4 py-3">Hands</th>
+                          <th className="text-right px-4 py-3">Net</th>
+                          <th className="text-right px-4 py-3">VPIP</th>
+                          <th className="text-right px-4 py-3">PFR</th>
+                          <th className="text-right px-4 py-3">AF</th>
+                          <th className="text-right px-4 py-3">WTSD</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allPlayerStats.map((p) => {
+                          const isHero = p.playerId === session.heroId
+                          const netStr = p.net >= 0 ? `+${p.net}` : `${p.net}`
+                          const netClass = p.net > 0 ? 'text-emerald-400' : p.net < 0 ? 'text-red-400' : 'text-gray-400'
+                          return (
+                            <tr
+                              key={p.playerId}
+                              className={`border-b border-gray-700/50 last:border-0 ${isHero ? 'bg-emerald-900/20' : ''}`}
+                            >
+                              <td className="px-4 py-3 text-gray-100">
+                                {p.displayName}
+                                {isHero && <span className="ml-1.5 text-[10px] font-bold uppercase text-emerald-400">you</span>}
+                              </td>
+                              <td className="px-4 py-3 text-right text-gray-400">{p.handsPlayed}</td>
+                              <td className={`px-4 py-3 text-right font-mono font-bold ${netClass}`}>{netStr}</td>
+                              <td className="px-4 py-3 text-right text-gray-300">{p.vpip}%</td>
+                              <td className="px-4 py-3 text-right text-gray-300">{p.pfr}%</td>
+                              <td className="px-4 py-3 text-right text-gray-300">{p.af}</td>
+                              <td className="px-4 py-3 text-right text-gray-300">{p.wtsd}%</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-              <NetTimeline hands={hands} heroId={session.heroId} />
-            </div>
-          )}
+            )
+          })()}
 
           {/* Flagged cards (Flagged tab only) */}
           {activeTab === 'flagged' && flaggedHands.length > 0 && (

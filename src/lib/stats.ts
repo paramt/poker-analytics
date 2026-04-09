@@ -219,6 +219,86 @@ export function buildNetTimelines(hands: Hand[]): {
   }
 }
 
+/**
+ * Compute stats for every player across all hands.
+ * Each player's denominator is the number of hands they appeared in.
+ * Net is derived from computePlayerResults for accuracy.
+ */
+export function computeAllPlayerStats(hands: Hand[]): Array<{
+  playerId: string
+  displayName: string
+  handsPlayed: number
+  net: number
+  vpip: number
+  pfr: number
+  af: number
+  wtsd: number
+}> {
+  if (hands.length === 0) return []
+
+  // Collect all players
+  const playerMeta = new Map<string, string>()
+  for (const hand of hands) {
+    for (const [id, info] of Object.entries(hand.players)) {
+      if (!playerMeta.has(id)) playerMeta.set(id, info.displayName)
+    }
+  }
+
+  return Array.from(playerMeta.entries()).map(([playerId, displayName]) => {
+    const playerHands = hands.filter(h => playerId in h.players)
+
+    let vpipCount = 0
+    let pfrCount = 0
+    let wtsdDenom = 0
+    let wtsdNum = 0
+    let net = 0
+    let betsRaises = 0
+    let calls = 0
+
+    for (const hand of playerHands) {
+      if (hand.preflop.some(a =>
+        a.player === playerId && (a.type === 'call' || a.type === 'raise' || a.type === 'bet')
+      )) vpipCount++
+
+      if (hand.preflop.some(a => a.player === playerId && a.type === 'raise')) pfrCount++
+
+      if (hand.board.length >= 3) {
+        wtsdDenom++
+        const allActions = [...hand.preflop, ...hand.flop, ...hand.turn, ...hand.river]
+        if (allActions.some(a => a.player === playerId && a.type === 'show')) wtsdNum++
+      }
+
+      const postflop = [...hand.flop, ...hand.turn, ...hand.river]
+      for (const action of postflop) {
+        if (action.player !== playerId) continue
+        if (action.type === 'bet' || action.type === 'raise') betsRaises++
+        if (action.type === 'call') calls++
+      }
+
+      const results = computePlayerResults(hand)
+      net += results[playerId] ?? 0
+    }
+
+    const pct = (num: number, denom: number) =>
+      denom === 0 ? 0 : Math.round((num / denom) * 100)
+
+    const af = calls === 0
+      ? (betsRaises > 0 ? betsRaises : 0)
+      : Math.round((betsRaises / calls) * 100) / 100
+
+    return {
+      playerId,
+      displayName,
+      handsPlayed: playerHands.length,
+      net: Math.round(net),
+      vpip: pct(vpipCount, playerHands.length),
+      pfr: pct(pfrCount, playerHands.length),
+      af,
+      wtsd: pct(wtsdNum, wtsdDenom),
+    }
+  })
+}
+
 // ─── Rare hand detection ────────────────────────────────────────────────────
 
 interface ParsedCard { rank: number; suit: string }
