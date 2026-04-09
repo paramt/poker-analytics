@@ -27,10 +27,13 @@ function heroPFR(hand: Hand): boolean {
 }
 
 /**
- * Determine if the hand reached the flop (for WTSD denominator).
+ * Determine if the hero saw the flop — i.e. was dealt in and did NOT fold preflop.
+ * Used as the WTSD denominator.
  */
-function wentToFlop(hand: Hand): boolean {
-  return hand.board.length >= 3
+function heroSawFlop(hand: Hand): boolean {
+  if (hand.holeCards.length === 0) return false
+  if (hand.board.length < 3) return false
+  return !hand.preflop.some(a => a.player === hand.heroId && a.type === 'fold')
 }
 
 /**
@@ -52,6 +55,7 @@ function computeAF(hands: Hand[], heroId: string): number {
   let calls = 0
 
   for (const hand of hands) {
+    if (hand.holeCards.length === 0) continue
     const postflop = [...hand.flop, ...hand.turn, ...hand.river]
     for (const action of postflop) {
       if (action.player !== heroId) continue
@@ -81,10 +85,11 @@ export function computeStats(hands: Hand[], heroId: string): SessionStats {
 
   for (const hand of hands) {
     const dealtIn = hand.holeCards.length > 0
-    if (dealtIn) handsDealtIn++
+    if (!dealtIn) continue
+    handsDealtIn++
     if (heroVPIP(hand)) vpipCount++
     if (heroPFR(hand)) pfrCount++
-    if (wentToFlop(hand)) {
+    if (heroSawFlop(hand)) {
       wtsdDenom++
       if (heroAtShowdown(hand)) wtsdNum++
     }
@@ -100,7 +105,7 @@ export function computeStats(hands: Hand[], heroId: string): SessionStats {
     pfr: pct(pfrCount, handsDealtIn),
     af: computeAF(hands, heroId),
     wtsd: pct(wtsdNum, wtsdDenom),
-    handsPlayed: hands.length,
+    handsPlayed: handsDealtIn,
   }
 }
 
