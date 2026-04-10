@@ -256,6 +256,7 @@ function parseHand(lines: string[], heroId: string, timestamp: string): Hand | n
   const board: string[] = []
   const board2: string[] = []
   let totalCollected = 0
+  let totalPotCollected = 0  // sum of all collected events = actual pot size
   let uncalledReturned = 0
   const heroPutIn = new Map<string, number>() // track per-player money in (hand total)
   const streetCommitted = new Map<string, number>() // track per-player street commitment (resets each street)
@@ -321,8 +322,11 @@ function parseHand(lines: string[], heroId: string, timestamp: string): Hand | n
     if (!action) continue
 
     // Track money in for result computation
-    if (action.type === 'collect' && action.player === heroId) {
-      totalCollected += action.amount ?? 0
+    if (action.type === 'collect') {
+      totalPotCollected += action.amount ?? 0
+      if (action.player === heroId) {
+        totalCollected += action.amount ?? 0
+      }
     }
     if (action.type === 'uncalled' && action.player === heroId) {
       uncalledReturned += action.amount ?? 0
@@ -374,11 +378,9 @@ function parseHand(lines: string[], heroId: string, timestamp: string): Hand | n
   const heroPutInAmount = heroPutIn.get(heroId) ?? 0
   const result = totalCollected - heroPutInAmount + uncalledReturned
 
-  // Compute pot (sum of all money put in)
-  let pot = 0
-  for (const amt of heroPutIn.values()) {
-    pot += amt
-  }
+  // Pot = total chips collected from the pot (accurate even with all-in dead money /
+  // side pots, since uncalled bets are returned before collection)
+  const pot = totalPotCollected
 
   return {
     id: handNum,
