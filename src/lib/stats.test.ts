@@ -130,20 +130,22 @@ describe('tagBigPots', () => {
     expect(tagBigPots([])).toEqual([])
   })
 
-  it('tags hands with pot >= 3x session average', () => {
+  it('tags hands with pot >= 4x session average', () => {
+    // 4 hands of 100, 1 hand of 1600: avg=400, threshold=1600; 1600 >= 1600
     const hands = [
       makeHand(1, { pot: 100 }),
       makeHand(2, { pot: 100 }),
       makeHand(3, { pot: 100 }),
-      makeHand(4, { pot: 900 }), // 3x avg of 300
+      makeHand(4, { pot: 100 }),
+      makeHand(5, { pot: 1600 }),
     ]
     const flagged = tagBigPots(hands)
     expect(flagged).toHaveLength(1)
-    expect(flagged[0].handId).toBe(4)
+    expect(flagged[0].handId).toBe(5)
     expect(flagged[0].tag).toBe('bigpot')
   })
 
-  it('does not tag hands below 3x average', () => {
+  it('does not tag hands below 4x average', () => {
     const hands = [
       makeHand(1, { pot: 100 }),
       makeHand(2, { pot: 200 }),

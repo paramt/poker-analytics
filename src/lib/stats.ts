@@ -435,7 +435,7 @@ export function tagBigPots(hands: Hand[]): FlaggedHand[] {
   if (hands.length === 0) return []
 
   const avgPot = hands.reduce((sum, h) => sum + h.pot, 0) / hands.length
-  const threshold = avgPot * 3
+  const threshold = avgPot * 4
 
   return hands
     .filter(h => h.pot >= threshold)
