@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { Hand, FlaggedHand, AITag } from '../types'
+import { bestHandDescription } from './handEval'
 
 const VALID_TAGS = new Set<AITag>(['learning', 'hero', 'laydown', 'bigpot', 'notable'])
 const BATCH_SIZE = 50
@@ -10,6 +11,7 @@ const RETRY_DELAY_MS = 1000
 
 interface HandSummary {
   id: number
+  game: string      // e.g. "PLO5", "PLO4", "NLH"
   hero: string      // seat position
   cards: string     // e.g. "AsKd"
   stacks: Record<string, number>
@@ -29,86 +31,6 @@ interface HandSummary {
   }
 }
 
-// ─── Hand evaluator ───────────────────────────────────────────────────────
-
-interface ParsedCard { rank: number; suit: string }
-
-function parseCard(s: string): ParsedCard | null {
-  const cleaned = s.trim()
-  if (!cleaned) return null
-  const suitMap: Record<string, string> = { '♠': 's', '♥': 'h', '♦': 'd', '♣': 'c', 's': 's', 'h': 'h', 'd': 'd', 'c': 'c' }
-  const lastChar = cleaned.slice(-1)
-  const suit = suitMap[lastChar]
-  if (!suit) return null
-  const rankStr = cleaned.slice(0, -1)
-  const rankMap: Record<string, number> = { 'A': 14, 'K': 13, 'Q': 12, 'J': 11, 'T': 10, '10': 10 }
-  const rank = rankMap[rankStr] ?? parseInt(rankStr)
-  if (isNaN(rank) || rank < 2 || rank > 14) return null
-  return { rank, suit }
-}
-
-function findStraightHigh(uniqueRanks: number[]): number | null {
-  const ranks = [...uniqueRanks]
-  if (ranks.includes(14)) ranks.push(1)
-  ranks.sort((a, b) => b - a)
-  for (let i = 0; i <= ranks.length - 5; i++) {
-    let ok = true
-    for (let j = 1; j < 5; j++) {
-      if (ranks[i + j] !== ranks[i] - j) { ok = false; break }
-    }
-    if (ok) return ranks[i] === 1 ? 5 : ranks[i]
-  }
-  return null
-}
-
-function describeBestHand(holeCards: string[], boardCards: string[]): string {
-  const cards = [...holeCards, ...boardCards].map(parseCard).filter((c): c is ParsedCard => c !== null)
-  if (cards.length === 0) return ''
-
-  const bySuit = new Map<string, number[]>()
-  const byRank = new Map<number, number>()
-  for (const c of cards) {
-    if (!bySuit.has(c.suit)) bySuit.set(c.suit, [])
-    bySuit.get(c.suit)!.push(c.rank)
-    byRank.set(c.rank, (byRank.get(c.rank) ?? 0) + 1)
-  }
-
-  const RANK_NAME: Record<number, string> = {
-    14: 'A', 13: 'K', 12: 'Q', 11: 'J', 10: 'T', 9: '9', 8: '8', 7: '7', 6: '6', 5: '5', 4: '4', 3: '3', 2: '2'
-  }
-  const rn = (r: number) => RANK_NAME[r] ?? String(r)
-  const rankEntries = [...byRank.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])
-  const uniqueRanks = [...new Set(cards.map(c => c.rank))].sort((a, b) => b - a)
-
-  let flushSuit: string | null = null
-  for (const [suit, ranks] of bySuit) {
-    if (ranks.length >= 5) { flushSuit = suit; break }
-  }
-
-  const straightHigh = findStraightHigh(uniqueRanks)
-
-  if (flushSuit) {
-    const flushUniqueRanks = [...new Set(bySuit.get(flushSuit)!)].sort((a, b) => b - a)
-    const sfHigh = findStraightHigh(flushUniqueRanks)
-    if (sfHigh !== null) return sfHigh === 14 ? 'royal flush' : `str-flush ${rn(sfHigh)}-high`
-  }
-  if (rankEntries[0][1] >= 4) return `quads ${rn(rankEntries[0][0])}s`
-  if (rankEntries[0][1] >= 3 && (rankEntries[1]?.[1] ?? 0) >= 2)
-    return `boat ${rn(rankEntries[0][0])}s/${rn(rankEntries[1][0])}s`
-  if (flushSuit) {
-    const top = bySuit.get(flushSuit)!.sort((a, b) => b - a).slice(0, 5)
-    return `flush ${top.map(rn).join('')}`
-  }
-  if (straightHigh !== null) return `straight ${rn(straightHigh)}-high`
-  if (rankEntries[0][1] >= 3) return `trips ${rn(rankEntries[0][0])}s`
-  if (rankEntries[0][1] >= 2 && (rankEntries[1]?.[1] ?? 0) >= 2)
-    return `2pair ${rn(rankEntries[0][0])}/${rn(rankEntries[1][0])}`
-  if (rankEntries[0][1] >= 2) {
-    const kicker = rankEntries.find(([r, c]) => c === 1 && r !== rankEntries[0][0])?.[0]
-    return `pair ${rn(rankEntries[0][0])}${kicker !== undefined ? `/${rn(kicker)}k` : ''}`
-  }
-  return `hi-card ${rn(uniqueRanks[0])}`
-}
 
 function sanitize(s: string): string {
   return s.replace(/[\n\r"{}]/g, ' ').trim()
@@ -180,7 +102,7 @@ function summarizeHand(hand: Hand): HandSummary | null {
     if (boardSlice.length === 0 || knownHands.size === 0) return undefined
     const result: Record<string, string> = {}
     for (const [pos, hole] of knownHands) {
-      const desc = describeBestHand(hole, boardSlice)
+      const desc = bestHandDescription(hole, boardSlice)
       if (desc) result[pos] = desc
     }
     return Object.keys(result).length > 0 ? result : undefined
@@ -190,8 +112,12 @@ function summarizeHand(hand: Hand): HandSummary | null {
   if (hand.board.length >= 4) madeHands.turn = computeStreetHands(hand.board.slice(0, 4))
   if (hand.board.length >= 5) madeHands.river = computeStreetHands(hand.board.slice(0, 5))
 
+  const holeCount = hand.holeCards.length
+  const gameType = holeCount >= 5 ? `PLO${holeCount}` : holeCount === 4 ? 'PLO4' : 'NLH'
+
   const summary: HandSummary = {
     id: hand.id,
+    game: gameType,
     hero: heroPos,
     cards: fmtCards(hand.holeCards),
     stacks,
@@ -243,8 +169,9 @@ Tags (use exactly one per flagged hand):
 - "notable": Something genuinely interesting or unusual that doesn't fit the other tags — e.g. a cooler (set over set, nut flush vs straight flush), two players sharing the same hole cards, everyone playing the board, a wild run-out, a perfectly executed bluff or hero call worth sharing. Use sparingly; only flag if it's truly remarkable.
 
 Context fields in each hand:
+- "game": the game variant. "NLH" = No-Limit Hold'em (2 hole cards, use any combo). "PLO4" = Pot-Limit Omaha (4 hole cards). "PLO5" = 5-card PLO. IMPORTANT: in any PLO variant, a player's best hand uses EXACTLY 2 of their hole cards and EXACTLY 3 board cards — never more, never fewer. A player holding 3 cards of a suit does NOT have a flush unless exactly 2 of those suit cards are used with exactly 3 board cards of that suit. Always trust "madeHands" over your own evaluation of raw hole cards for PLO hands.
 - "opponents": revealed hole cards of opponents (from showdowns). Use this to verify what villain actually held — e.g. if villain had a bluff, laydown was a mistake; if villain had a monster, hero's fold was correct.
-- "madeHands": best 5-card hand for hero and any revealed opponents at the flop, turn, and river. Use these to verify hand strength claims — e.g. confirm hero actually had a strong hand before tagging "laydown", or check if a "hero call" was truly difficult given hero's made hand.
+- "madeHands": best 5-card hand for hero and any revealed opponents at the flop, turn, and river, computed correctly per the game variant (PLO rules enforced). Use these to verify hand strength claims — e.g. confirm hero actually had a strong hand before tagging "laydown", or check if a "hero call" was truly difficult given hero's made hand.
 
 Rules:
 - Only flag hands where hero saw a flop (preflop folds are almost never notable).
