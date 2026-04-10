@@ -63,6 +63,7 @@ src/
 ## Workflow
 
 - Always commit and push after completing a feature request.
+- Avoid duplicating logic that already exists. Before writing a new utility (card parsing, hand evaluation, combinations, etc.), check `src/lib/` for an existing implementation to import. `handEval.ts` is the single source of truth for card parsing and hand evaluation — `stats.ts` and `claude.ts` must import from it, not reimplement it.
 
 ## Deploy
 
