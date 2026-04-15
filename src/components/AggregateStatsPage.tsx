@@ -293,15 +293,25 @@ export default function AggregateStatsPage() {
   const [uploadErrors, setUploadErrors] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  function loadStats() {
-    return listSessions().then(sessions => {
-      const deduped = deduplicateSessions(sessions)
-      setTotalSessions(deduped.length)
-      setDuplicatesRemoved(sessions.length - deduped.length)
-      setTotalHands(deduped.reduce((sum, s) => sum + s.hands.length, 0))
-      setRows(aggregateAllPlayers(deduped))
-      setTimeline(buildCrossSessionTimeline(deduped))
-    })
+  async function loadStats() {
+    let sessions = await listSessions()
+
+    // Backfill playerStats for sessions uploaded before this field was added
+    const toBackfill = sessions.filter(s => !s.playerStats)
+    if (toBackfill.length > 0) {
+      await Promise.all(toBackfill.map(s => {
+        const backfilled = { ...s, playerStats: computeAllPlayerStats(s.hands) }
+        return saveSession(backfilled)
+      }))
+      sessions = await listSessions()
+    }
+
+    const deduped = deduplicateSessions(sessions)
+    setTotalSessions(deduped.length)
+    setDuplicatesRemoved(sessions.length - deduped.length)
+    setTotalHands(deduped.reduce((sum, s) => sum + s.hands.length, 0))
+    setRows(aggregateAllPlayers(deduped))
+    setTimeline(buildCrossSessionTimeline(deduped))
   }
 
   useEffect(() => {
