@@ -49,6 +49,17 @@ export interface FlaggedHand {
 export interface PlayerStats extends SessionStats {
   playerId: string
   displayName: string
+  threeBet: number      // 0–100 percentage
+  foldToThreeBet: number
+  cbet: number
+  foldToCbet: number
+  checkRaise: number
+  wdsd: number
+  biggestWin: number
+  biggestLoss: number
+  bestMadeHandScore: number  // evaluate5 score; -1 if never showed
+  bestMadeHandDesc: string
+  hoursPlayed: number        // session duration from first to last hand appearance
 }
 
 export interface Session {

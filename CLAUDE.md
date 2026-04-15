@@ -34,7 +34,7 @@ src/
   lib/
     parser.ts        # PokerNow CSV parser
     seats.ts         # Seat position mapping (BTN/SB/BB/UTG/etc.)
-    stats.ts         # Session stats computation (VPIP/PFR/AF/WTSD)
+    stats.ts         # Session + per-player stats (VPIP/PFR/AF/WTSD/3-bet/cbet/etc.)
     compress.ts      # lz-string URL encoding for hand sharing
     claude.ts        # Claude AI scan (batching, retry, prompt building)
     db.ts            # IndexedDB session persistence via idb-keyval
@@ -48,6 +48,7 @@ src/
     ShareButton.tsx   # Copy hand URL to clipboard
     ApiKeyInput.tsx   # Claude API key input (localStorage)
     SharedHandView.tsx # Shared ?hand= URL route
+    AggregateStatsPage.tsx # /stats — cross-session player stats + net winnings chart
 ```
 
 ## Key Design Decisions
@@ -59,6 +60,22 @@ src/
 - **AI scan** — parallel batches of 50, Promise.allSettled, exponential backoff on 429
 - **bigpot tag** — computed client-side (pot ≥ 3x session avg), no Claude needed
 - **Run-it-twice** — `board2?: string[]` field on Hand
+
+## Aggregate Stats (`/stats` page)
+
+`PlayerStats` (defined in `types.ts`) is computed at upload time via `computeAllPlayerStats(hands)` in `stats.ts` and stored on the `Session` object in IndexedDB. The `/stats` page reads these stored values — it does not reprocess hands.
+
+**Stats computed:** VPIP, PFR, AF, WTSD, 3-bet %, fold-to-3bet %, c-bet %, fold-to-c-bet %, check-raise %, W$SD, biggest win, biggest loss, best made hand (score + description via `handEval.ts`).
+
+**Deduplication:** sessions with the same first-hand timestamp are treated as duplicates; the one with the most hands is kept.
+
+**Aggregation across sessions:** percentage stats are weighted by `handsPlayed`. `biggestWin`/`biggestLoss` take the max/min across sessions. `bestMadeHandScore` takes the max (highest score wins).
+
+### Backfilling
+
+When a new stat is added to `PlayerStats`, sessions already in IndexedDB won't have it. `AggregateStatsPage.loadStats()` handles this: it checks for a sentinel field from the latest schema version (`s.playerStats[0].checkRaise === undefined` currently), recomputes `computeAllPlayerStats` for all stale sessions, and writes them back via `saveSession`. This runs once per stale session and is transparent to the user.
+
+**Rule: any new field added to `PlayerStats` must update the backfill sentinel.** Change the condition in `AggregateStatsPage.loadStats()` to check for the newest field being `undefined`. Current sentinel: `hoursPlayed === undefined`. Pick a field that is always present in the new schema (not optional, not a field that could legitimately be absent).
 
 ## Workflow
 

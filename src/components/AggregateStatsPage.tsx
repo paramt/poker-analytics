@@ -16,6 +16,16 @@ interface AggregatedRow {
   pfr: number
   af: number
   wtsd: number
+  threeBet: number
+  foldToThreeBet: number
+  cbet: number
+  foldToCbet: number
+  checkRaise: number
+  wdsd: number
+  biggestWin: number
+  biggestLoss: number
+  bestMadeHandDesc: string
+  chipsPerHour: number
 }
 
 interface PlayerTimeline {
@@ -53,13 +63,27 @@ function aggregateAllPlayers(sessions: Session[]): AggregatedRow[] {
   const byName = new Map<string, {
     net: number; handsPlayed: number
     vpipSum: number; pfrSum: number; afSum: number; wtsdSum: number
+    threeBetSum: number; foldToThreeBetSum: number; cbetSum: number; foldToCbetSum: number
+    checkRaiseSum: number; wdsdSum: number
+    biggestWin: number; biggestLoss: number
+    bestMadeHandScore: number; bestMadeHandDesc: string
+    hoursPlayed: number
     sessionIds: Set<string>
   }>()
 
   for (const session of sessions) {
     for (const p of (session.playerStats ?? [])) {
       if (!byName.has(p.displayName)) {
-        byName.set(p.displayName, { net: 0, handsPlayed: 0, vpipSum: 0, pfrSum: 0, afSum: 0, wtsdSum: 0, sessionIds: new Set() })
+        byName.set(p.displayName, {
+          net: 0, handsPlayed: 0,
+          vpipSum: 0, pfrSum: 0, afSum: 0, wtsdSum: 0,
+          threeBetSum: 0, foldToThreeBetSum: 0, cbetSum: 0, foldToCbetSum: 0,
+          checkRaiseSum: 0, wdsdSum: 0,
+          biggestWin: 0, biggestLoss: 0,
+          bestMadeHandScore: -1, bestMadeHandDesc: '',
+          hoursPlayed: 0,
+          sessionIds: new Set(),
+        })
       }
       const acc = byName.get(p.displayName)!
       acc.net += p.net
@@ -67,22 +91,48 @@ function aggregateAllPlayers(sessions: Session[]): AggregatedRow[] {
       acc.pfrSum += p.pfr * p.handsPlayed
       acc.afSum += p.af * p.handsPlayed
       acc.wtsdSum += p.wtsd * p.handsPlayed
+      acc.threeBetSum += (p.threeBet ?? 0) * p.handsPlayed
+      acc.foldToThreeBetSum += (p.foldToThreeBet ?? 0) * p.handsPlayed
+      acc.cbetSum += (p.cbet ?? 0) * p.handsPlayed
+      acc.foldToCbetSum += (p.foldToCbet ?? 0) * p.handsPlayed
+      acc.checkRaiseSum += (p.checkRaise ?? 0) * p.handsPlayed
+      acc.wdsdSum += (p.wdsd ?? 0) * p.handsPlayed
+      if ((p.biggestWin ?? 0) > acc.biggestWin) acc.biggestWin = p.biggestWin
+      if ((p.biggestLoss ?? 0) < acc.biggestLoss) acc.biggestLoss = p.biggestLoss
+      if ((p.bestMadeHandScore ?? -1) > acc.bestMadeHandScore) {
+        acc.bestMadeHandScore = p.bestMadeHandScore
+        acc.bestMadeHandDesc = p.bestMadeHandDesc
+      }
+      acc.hoursPlayed += p.hoursPlayed ?? 0
       acc.handsPlayed += p.handsPlayed
       acc.sessionIds.add(session.id)
     }
   }
 
   return Array.from(byName.entries())
-    .map(([displayName, acc]) => ({
-      displayName,
-      sessionCount: acc.sessionIds.size,
-      handsPlayed: acc.handsPlayed,
-      net: acc.net,
-      vpip: acc.handsPlayed > 0 ? Math.round(acc.vpipSum / acc.handsPlayed) : 0,
-      pfr: acc.handsPlayed > 0 ? Math.round(acc.pfrSum / acc.handsPlayed) : 0,
-      af: acc.handsPlayed > 0 ? Math.round((acc.afSum / acc.handsPlayed) * 10) / 10 : 0,
-      wtsd: acc.handsPlayed > 0 ? Math.round(acc.wtsdSum / acc.handsPlayed) : 0,
-    }))
+    .map(([displayName, acc]) => {
+      const w = (sum: number) => acc.handsPlayed > 0 ? sum / acc.handsPlayed : 0
+      return {
+        displayName,
+        sessionCount: acc.sessionIds.size,
+        handsPlayed: acc.handsPlayed,
+        net: acc.net,
+        vpip: Math.round(w(acc.vpipSum)),
+        pfr: Math.round(w(acc.pfrSum)),
+        af: Math.round(w(acc.afSum) * 10) / 10,
+        wtsd: Math.round(w(acc.wtsdSum)),
+        threeBet: Math.round(w(acc.threeBetSum)),
+        foldToThreeBet: Math.round(w(acc.foldToThreeBetSum)),
+        cbet: Math.round(w(acc.cbetSum)),
+        foldToCbet: Math.round(w(acc.foldToCbetSum)),
+        checkRaise: Math.round(w(acc.checkRaiseSum)),
+        wdsd: Math.round(w(acc.wdsdSum)),
+        biggestWin: acc.biggestWin,
+        biggestLoss: acc.biggestLoss,
+        bestMadeHandDesc: acc.bestMadeHandDesc,
+        chipsPerHour: acc.hoursPlayed > 0 ? Math.round((acc.net / acc.hoursPlayed) * 10) / 10 : 0,
+      }
+    })
     .sort((a, b) => b.net - a.net)
 }
 
@@ -143,19 +193,24 @@ interface TooltipState {
   values: { displayName: string; cumulative: number; color: string }[]
 }
 
-function CrossSessionChart({ timeline }: { timeline: CrossSessionTimeline }) {
+function CrossSessionChart({ timeline, selectedPlayers, onToggle }: {
+  timeline: CrossSessionTimeline
+  selectedPlayers: Set<string>
+  onToggle: (name: string) => void
+}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
 
   const { sessionDates, players } = timeline
+  const visiblePlayers = players.filter(p => selectedPlayers.has(p.displayName))
   const n = sessionDates.length + 1
 
   const innerW = WIDTH - PAD.left - PAD.right
   const innerH = HEIGHT - PAD.top - PAD.bottom
 
-  const allValues = players.flatMap(p => p.cumulative)
-  const rawMin = Math.min(0, ...allValues)
-  const rawMax = Math.max(0, ...allValues)
+  const allValues = visiblePlayers.flatMap(p => p.cumulative)
+  const rawMin = Math.min(0, ...allValues.length ? allValues : [0])
+  const rawMax = Math.max(0, ...allValues.length ? allValues : [0])
   const padding = Math.max((rawMax - rawMin) * 0.08, 5)
   const yMin = rawMin - padding
   const yMax = rawMax + padding
@@ -183,6 +238,7 @@ function CrossSessionChart({ timeline }: { timeline: CrossSessionTimeline }) {
     const idx = Math.round(frac * (n - 1))
     const values = players
       .map((p, ci) => ({ displayName: p.displayName, cumulative: p.cumulative[idx], color: PLAYER_COLORS[ci % PLAYER_COLORS.length] }))
+      .filter(v => selectedPlayers.has(v.displayName))
       .sort((a, b) => b.cumulative - a.cumulative)
     setTooltip({ x: toX(idx), idx, values })
   }
@@ -222,7 +278,7 @@ function CrossSessionChart({ timeline }: { timeline: CrossSessionTimeline }) {
               {lbl}
             </text>
           ))}
-          {players.map((player, ci) => (
+          {players.map((player, ci) => selectedPlayers.has(player.displayName) && (
             <polyline
               key={player.displayName}
               points={player.cumulative.map((v, i) => `${toX(i)},${toY(v)}`).join(' ')}
@@ -263,13 +319,26 @@ function CrossSessionChart({ timeline }: { timeline: CrossSessionTimeline }) {
         )}
       </div>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3">
-        {players.map((player, ci) => (
-          <div key={player.displayName} className="flex items-center gap-1.5 text-xs">
-            <span className="w-3 shrink-0 inline-block rounded" style={{ background: PLAYER_COLORS[ci % PLAYER_COLORS.length], height: 2 }} />
-            <span className="text-gray-400">{player.displayName}</span>
-          </div>
-        ))}
+      <div className="flex flex-wrap gap-2 mt-3">
+        {players.map((player, ci) => {
+          const color = PLAYER_COLORS[ci % PLAYER_COLORS.length]
+          const active = selectedPlayers.has(player.displayName)
+          return (
+            <button
+              key={player.displayName}
+              onClick={() => onToggle(player.displayName)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                active
+                  ? 'border-transparent text-gray-900'
+                  : 'border-gray-700 bg-transparent text-gray-500 hover:text-gray-400'
+              }`}
+              style={active ? { background: color } : undefined}
+            >
+              {!active && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color, opacity: 0.4 }} />}
+              {player.displayName}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -281,6 +350,7 @@ export default function AggregateStatsPage() {
   const [loading, setLoading] = useState(true)
   const [rows, setRows] = useState<AggregatedRow[]>([])
   const [timeline, setTimeline] = useState<CrossSessionTimeline | null>(null)
+  const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(new Set())
   const [totalSessions, setTotalSessions] = useState(0)
   const [totalHands, setTotalHands] = useState(0)
   const [duplicatesRemoved, setDuplicatesRemoved] = useState(0)
@@ -296,8 +366,8 @@ export default function AggregateStatsPage() {
   async function loadStats() {
     let sessions = await listSessions()
 
-    // Backfill playerStats for sessions uploaded before this field was added
-    const toBackfill = sessions.filter(s => !s.playerStats)
+    // Backfill playerStats for sessions missing the field or missing newer stat columns
+    const toBackfill = sessions.filter(s => !s.playerStats || (s.playerStats[0] && s.playerStats[0].hoursPlayed === undefined))
     if (toBackfill.length > 0) {
       await Promise.all(toBackfill.map(s => {
         const backfilled = { ...s, playerStats: computeAllPlayerStats(s.hands) }
@@ -310,8 +380,18 @@ export default function AggregateStatsPage() {
     setTotalSessions(deduped.length)
     setDuplicatesRemoved(sessions.length - deduped.length)
     setTotalHands(deduped.reduce((sum, s) => sum + s.hands.length, 0))
-    setRows(aggregateAllPlayers(deduped))
+    const aggregated = aggregateAllPlayers(deduped)
+    setRows(aggregated)
     setTimeline(buildCrossSessionTimeline(deduped))
+    // Sync selectedPlayers: keep existing selections, add new players, remove gone ones
+    setSelectedPlayers(prev => {
+      const allNames = new Set(aggregated.map(r => r.displayName))
+      if (prev.size === 0) return allNames  // initial load: select all
+      const next = new Set(prev)
+      for (const name of allNames) { if (!next.has(name)) next.add(name) }
+      for (const name of next) { if (!allNames.has(name)) next.delete(name) }
+      return next
+    })
   }
 
   useEffect(() => {
@@ -388,6 +468,15 @@ export default function AggregateStatsPage() {
     setUploading(false)
     setUploadProgress(null)
     await loadStats()
+  }
+
+  function togglePlayer(name: string) {
+    setSelectedPlayers(prev => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
   }
 
   const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -532,8 +621,9 @@ export default function AggregateStatsPage() {
           <div className="text-center text-gray-500 py-8">No sessions yet — upload some CSVs above.</div>
         ) : (
           <>
-            {timeline && <CrossSessionChart timeline={timeline} />}
+            {timeline && <CrossSessionChart timeline={timeline} selectedPlayers={selectedPlayers} onToggle={togglePlayer} />}
 
+            {/* Main stats table */}
             <div className="overflow-x-auto rounded-xl border border-gray-700">
               <table className="w-full text-sm">
                 <thead>
@@ -542,14 +632,17 @@ export default function AggregateStatsPage() {
                     <th className="text-right px-4 py-3">Sessions</th>
                     <th className="text-right px-4 py-3">Hands</th>
                     <th className="text-right px-4 py-3">Net</th>
+                    <th className="text-right px-4 py-3">c/hr</th>
                     <th className="text-right px-4 py-3">VPIP</th>
                     <th className="text-right px-4 py-3">PFR</th>
                     <th className="text-right px-4 py-3">AF</th>
-                    <th className="text-right px-4 py-3">WTSD</th>
+                    <th className="text-right px-4 py-3">Best Win</th>
+                    <th className="text-right px-4 py-3">Worst Loss</th>
+                    <th className="text-left px-4 py-3">Best Hand</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800">
-                  {rows.map((row) => (
+                  {rows.filter(r => selectedPlayers.has(r.displayName)).map((row) => (
                     <tr key={row.displayName} className="hover:bg-gray-800/50 transition-colors">
                       <td className="px-4 py-3 font-medium text-gray-100">{row.displayName}</td>
                       <td className="px-4 py-3 text-right text-gray-300 tabular-nums">{row.sessionCount}</td>
@@ -557,10 +650,56 @@ export default function AggregateStatsPage() {
                       <td className={`px-4 py-3 text-right font-semibold tabular-nums ${row.net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                         {row.net >= 0 ? '+' : ''}{row.net}
                       </td>
+                      <td className={`px-4 py-3 text-right tabular-nums font-medium ${row.chipsPerHour > 0 ? 'text-emerald-400' : row.chipsPerHour < 0 ? 'text-red-400' : 'text-gray-500'}`}>
+                        {row.chipsPerHour === 0 ? '—' : `${row.chipsPerHour > 0 ? '+' : ''}${row.chipsPerHour}`}
+                      </td>
                       <td className="px-4 py-3 text-right text-gray-300 tabular-nums">{row.vpip}%</td>
                       <td className="px-4 py-3 text-right text-gray-300 tabular-nums">{row.pfr}%</td>
                       <td className="px-4 py-3 text-right text-gray-300 tabular-nums">{row.af}</td>
+                      <td className="px-4 py-3 text-right text-emerald-400 tabular-nums font-medium">
+                        {row.biggestWin > 0 ? `+${row.biggestWin}` : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right text-red-400 tabular-nums font-medium">
+                        {row.biggestLoss < 0 ? `${row.biggestLoss}` : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-left text-gray-300 text-xs">
+                        {row.bestMadeHandDesc || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Aggression / frequency breakdown */}
+            <div className="overflow-x-auto rounded-xl border border-gray-700">
+              <div className="px-4 py-2.5 border-b border-gray-700 bg-gray-800/50">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Aggression &amp; Frequency</span>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-gray-400 uppercase tracking-wide border-b border-gray-700">
+                    <th className="text-left px-4 py-3">Player</th>
+                    <th className="text-right px-4 py-3">3-Bet</th>
+                    <th className="text-right px-4 py-3">F/3-Bet</th>
+                    <th className="text-right px-4 py-3">CBet</th>
+                    <th className="text-right px-4 py-3">F/CBet</th>
+                    <th className="text-right px-4 py-3">XR</th>
+                    <th className="text-right px-4 py-3">WTSD</th>
+                    <th className="text-right px-4 py-3">W$SD</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800">
+                  {rows.filter(r => selectedPlayers.has(r.displayName)).map((row) => (
+                    <tr key={row.displayName} className="hover:bg-gray-800/50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-gray-100">{row.displayName}</td>
+                      <td className="px-4 py-3 text-right text-gray-300 tabular-nums">{row.threeBet}%</td>
+                      <td className="px-4 py-3 text-right text-gray-300 tabular-nums">{row.foldToThreeBet}%</td>
+                      <td className="px-4 py-3 text-right text-gray-300 tabular-nums">{row.cbet}%</td>
+                      <td className="px-4 py-3 text-right text-gray-300 tabular-nums">{row.foldToCbet}%</td>
+                      <td className="px-4 py-3 text-right text-gray-300 tabular-nums">{row.checkRaise}%</td>
                       <td className="px-4 py-3 text-right text-gray-300 tabular-nums">{row.wtsd}%</td>
+                      <td className="px-4 py-3 text-right text-gray-300 tabular-nums">{row.wdsd}%</td>
                     </tr>
                   ))}
                 </tbody>
