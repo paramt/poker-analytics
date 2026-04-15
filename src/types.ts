@@ -46,6 +46,11 @@ export interface FlaggedHand {
   summary: string
 }
 
+export interface PlayerStats extends SessionStats {
+  playerId: string
+  displayName: string
+}
+
 export interface Session {
   id: string          // uuid
   filename: string
@@ -54,6 +59,7 @@ export interface Session {
   heroDisplayName: string
   hands: Hand[]
   stats: SessionStats
+  playerStats: PlayerStats[]
   flaggedHands: FlaggedHand[]
 }
 

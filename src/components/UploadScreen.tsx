@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useLocation } from 'wouter'
+import { useLocation, Link } from 'wouter'
 import { useStore } from '../store'
 import type { Session } from '../types'
 import { parseCSV, extractAllPlayers } from '../lib/parser'
-import { computeStats, tagBigPots, tagRareHands } from '../lib/stats'
+import { computeStats, computeAllPlayerStats, tagBigPots, tagRareHands } from '../lib/stats'
 import { saveSession, listSessions } from '../lib/db'
 import { scanHands } from '../lib/claude'
 import ApiKeyInput from './ApiKeyInput'
@@ -84,6 +84,7 @@ export default function UploadScreen() {
       }
 
       const stats = computeStats(hands, heroId)
+      const playerStats = computeAllPlayerStats(hands)
       const bigpotFlags = tagBigPots(hands)
       const rareFlags = tagRareHands(hands)
       const deterministicFlags = [...bigpotFlags, ...rareFlags].sort((a, b) => a.handId - b.handId)
@@ -98,6 +99,7 @@ export default function UploadScreen() {
         heroDisplayName: heroPlayer?.displayName ?? heroId,
         hands,
         stats,
+        playerStats,
         flaggedHands: deterministicFlags,
       }
 
@@ -144,6 +146,7 @@ export default function UploadScreen() {
       if (hands.length === 0) throw new Error('Demo CSV produced no hands.')
 
       const stats = computeStats(hands, demoHeroId)
+      const playerStats = computeAllPlayerStats(hands)
       const bigpotFlags = tagBigPots(hands)
       const rareFlags = tagRareHands(hands)
       // Merge client-computed deterministic flags with the pre-computed AI flags
@@ -159,6 +162,7 @@ export default function UploadScreen() {
         heroDisplayName: heroPlayer?.displayName ?? 'Param',
         hands,
         stats,
+        playerStats,
         flaggedHands: allFlags,
       }
 
@@ -300,7 +304,12 @@ export default function UploadScreen() {
         {/* Recent sessions */}
         {recentSessions.length > 0 && (
           <div className="bg-gray-800 rounded-xl p-4 flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Recent Sessions</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Recent Sessions</h2>
+              <Link href="/stats" className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">
+                Player Stats →
+              </Link>
+            </div>
             <div className="flex flex-col gap-2">
               {recentSessions.map((s) => (
                 <div

@@ -5,6 +5,7 @@ import UploadScreen from './components/UploadScreen'
 import SessionView from './components/SessionView'
 import HandReplayer from './components/HandReplayer'
 import SharedHandView from './components/SharedHandView'
+import AggregateStatsPage from './components/AggregateStatsPage'
 import { loadSession } from './lib/db'
 
 // ─── Route: /session/:id/hand/:handId ────────────────────────────────────────
@@ -118,6 +119,7 @@ export default function App() {
       <Switch>
         <Route path="/session/:id/hand/:handId" component={HandPage} />
         <Route path="/session/:id" component={SessionPage} />
+        <Route path="/stats" component={AggregateStatsPage} />
         <Route component={UploadScreen} />
       </Switch>
     </Router>
