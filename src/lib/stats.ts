@@ -504,87 +504,31 @@ export function computeAllPlayerStats(hands: Hand[]): Array<{
 
 // ─── Rare hand detection ────────────────────────────────────────────────────
 
-interface ParsedCard { rank: number; suit: string }
+// Score thresholds derived from evaluate5 tier constants:
+// full house = 6e8, four of a kind = 7e8, straight flush = 8e8
+const HOLDEM_RARE_THRESHOLD = 6e8   // full house or better
+const OMAHA_RARE_THRESHOLD  = 7e8   // four of a kind or better
 
-function parseCard(card: string): ParsedCard {
-  const suit = card.slice(-1)
-  const rankStr = card.slice(0, -1)
-  const rank =
-    rankStr === 'A' ? 14 :
-    rankStr === 'K' ? 13 :
-    rankStr === 'Q' ? 12 :
-    rankStr === 'J' ? 11 :
-    parseInt(rankStr)
-  return { rank, suit }
-}
+function bestBoardScore(holeCards: string[], board: string[], isOmaha: boolean): { score: number; description: string } | null {
+  let best: { score: number; description: string } | null = null
 
-function evaluate5CardHand(cards: ParsedCard[]): number {
-  const ranks = cards.map(c => c.rank).sort((a, b) => b - a)
-  const suits = cards.map(c => c.suit)
-
-  const isFlush = suits.every(s => s === suits[0])
-
-  const uniqueRanks = [...new Set(ranks)].sort((a, b) => b - a)
-  let isStraight =
-    uniqueRanks.length === 5 && uniqueRanks[0] - uniqueRanks[4] === 4
-  // Wheel: A-2-3-4-5
-  if (!isStraight && uniqueRanks.length === 5 &&
-      uniqueRanks[0] === 14 && uniqueRanks[1] === 5 && uniqueRanks[4] === 2) {
-    isStraight = true
-  }
-
-  const freq = new Map<number, number>()
-  for (const r of ranks) freq.set(r, (freq.get(r) ?? 0) + 1)
-  const counts = [...freq.values()].sort((a, b) => b - a)
-
-  if (isFlush && isStraight) return 8
-  if (counts[0] === 4) return 7
-  if (counts[0] === 3 && counts[1] === 2) return 6
-  if (isFlush) return 5
-  if (isStraight) return 4
-  if (counts[0] === 3) return 3
-  if (counts[0] === 2 && counts[1] === 2) return 2
-  if (counts[0] === 2) return 1
-  return 0
-}
-
-function combinations<T>(arr: T[], k: number): T[][] {
-  if (k === 0) return [[]]
-  if (arr.length < k) return []
-  const [first, ...rest] = arr
-  return [
-    ...combinations(rest, k - 1).map(c => [first, ...c]),
-    ...combinations(rest, k),
-  ]
-}
-
-function bestHoldemRank(hole: ParsedCard[], board: ParsedCard[]): number {
-  const all = [...hole, ...board]
-  if (all.length < 5) return -1
-  let best = -1
-  for (const combo of combinations(all, 5)) {
-    const r = evaluate5CardHand(combo)
-    if (r > best) best = r
-  }
-  return best
-}
-
-function bestOmahaRank(hole: ParsedCard[], board: ParsedCard[]): number {
-  if (board.length < 3) return -1
-  let best = -1
-  for (const holePair of combinations(hole, 2)) {
-    for (const boardTriple of combinations(board, 3)) {
-      const r = evaluate5CardHand([...holePair, ...boardTriple])
-      if (r > best) best = r
+  if (isOmaha) {
+    for (const hc of handCombinations(holeCards, 2)) {
+      for (const bc of handCombinations(board, 3)) {
+        const r = evaluate5([...hc, ...bc])
+        if (!best || r.score > best.score) best = r
+      }
+    }
+  } else {
+    const all = [...holeCards, ...board]
+    for (const combo of handCombinations(all, 5)) {
+      const r = evaluate5(combo)
+      if (!best || r.score > best.score) best = r
     }
   }
+
   return best
 }
-
-const HAND_NAMES = [
-  'High Card', 'One Pair', 'Two Pair', 'Three of a Kind',
-  'Straight', 'Flush', 'Full House', 'Four of a Kind', 'Straight Flush',
-]
 
 /**
  * Tag hands where the hero made a rare hand:
@@ -597,26 +541,22 @@ export function tagRareHands(hands: Hand[]): FlaggedHand[] {
   for (const hand of hands) {
     if (hand.holeCards.length === 0 || hand.board.length < 3) continue
 
-    const isOmaha = hand.holeCards.length >= 4 // PLO4, PLO5, etc.
-    const hole = hand.holeCards.map(parseCard)
+    const isOmaha = hand.holeCards.length >= 4
+    const threshold = isOmaha ? OMAHA_RARE_THRESHOLD : HOLDEM_RARE_THRESHOLD
 
     const boards = [hand.board, ...(hand.board2 ? [hand.board2] : [])]
-    let bestRank = -1
+    let best: { score: number; description: string } | null = null
     for (const board of boards) {
-      const boardCards = board.map(parseCard)
-      const r = isOmaha
-        ? bestOmahaRank(hole, boardCards)
-        : bestHoldemRank(hole, boardCards)
-      if (r > bestRank) bestRank = r
+      const r = bestBoardScore(hand.holeCards, board, isOmaha)
+      if (r && (!best || r.score > best.score)) best = r
     }
 
-    const threshold = isOmaha ? 7 : 6 // holdem: full house+, omaha: quads+
-    if (bestRank < threshold) continue
+    if (!best || best.score < threshold) continue
 
     result.push({
       handId: hand.id,
       tag: 'rare',
-      summary: `Rare hand: ${HAND_NAMES[bestRank] ?? 'Strong Hand'}`,
+      summary: `Rare hand: ${best.description}`,
     })
   }
 

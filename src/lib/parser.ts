@@ -1,8 +1,6 @@
 import type { Hand, Action, Player } from '../types'
 import { assignSeatPositions } from './seats'
 
-// ─── Regexes ────────────────────────────────────────────────────────────────
-
 const RE_HAND_START = /^-- starting hand #(\d+) \(id: ([^)]+)\).*\(dealer: "([^@]+) @ ([^"]+)"\)/
 const RE_HAND_END = /^-- ending hand #\d+/
 const RE_PLAYER_STACKS = /^Player stacks: (.+)$/
@@ -25,7 +23,6 @@ const RE_ACTION_SHOW = /^"([^@"]+) @ ([^"]+)" shows a (.+)\.$/
 const RE_UNCALLED = /^Uncalled bet of (\d+) returned to "([^@"]+) @ ([^"]+)"/
 const RE_ALLIN_BET = /^"([^@"]+) @ ([^"]+)" bets (\d+) and go all in/
 
-// Lines to skip (not actions)
 const SKIP_PATTERNS = [
   /^Your hand is/,
   /^Flop:/,
@@ -56,7 +53,6 @@ function shouldSkip(line: string): boolean {
   return SKIP_PATTERNS.some(p => p.test(line))
 }
 
-// ─── Player stack parsing ─────────────────────────────────────────────────
 
 interface PlayerInfo {
   displayName: string
@@ -84,7 +80,6 @@ function parsePlayerStacks(line: string): PlayerInfo[] {
   return players
 }
 
-// ─── Card parsing ─────────────────────────────────────────────────────────
 
 function parseCards(str: string): string[] {
   return str.split(',')
@@ -92,7 +87,6 @@ function parseCards(str: string): string[] {
     .filter(Boolean)
 }
 
-// ─── Action parsing ───────────────────────────────────────────────────────
 
 function parseAction(line: string): Action | null {
   let m: RegExpExecArray | null
@@ -137,11 +131,7 @@ function parseAction(line: string): Action | null {
   return null
 }
 
-// ─── Street tracking ──────────────────────────────────────────────────────
-
 type Street = 'preflop' | 'flop' | 'turn' | 'river'
-
-// ─── Main parser ─────────────────────────────────────────────────────────
 
 interface RawEntry {
   entry: string
@@ -192,14 +182,14 @@ export function parseCSV(csvText: string, heroId: string): Hand[] {
   // Parse CSV rows: entry, at, order
   const rows = parseCsvRows(csvText)
 
-  // Sort ascending by order
   rows.sort((a, b) => a.order - b.order)
 
   const hands: Hand[] = []
   let currentHandLines: string[] = []
   let currentTimestamp = ''
   let inHand = false
-  let afterEndMarker = false // show actions can appear after -- ending hand -- in PokerNow logs
+  // show actions can appear after "-- ending hand --" in PokerNow logs, so we keep accumulating
+  let afterEndMarker = false
 
   function flushHand() {
     if (currentHandLines.length === 0) return
@@ -222,14 +212,12 @@ export function parseCSV(csvText: string, heroId: string): Hand[] {
         currentHandLines.push(entry)
         inHand = false
         afterEndMarker = true
-        // Don't flush yet — show actions may appear after the ending marker
       }
     } else if (inHand || afterEndMarker) {
       currentHandLines.push(entry)
     }
   }
 
-  // Handle truncated last hand
   if (currentHandLines.length > 0) {
     flushHand()
   }

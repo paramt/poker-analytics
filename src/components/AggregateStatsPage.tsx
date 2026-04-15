@@ -72,7 +72,7 @@ function aggregateAllPlayers(sessions: Session[]): AggregatedRow[] {
   }>()
 
   for (const session of sessions) {
-    for (const p of (session.playerStats ?? [])) {
+    for (const p of session.playerStats) {
       if (!byName.has(p.displayName)) {
         byName.set(p.displayName, {
           net: 0, handsPlayed: 0,
@@ -91,19 +91,19 @@ function aggregateAllPlayers(sessions: Session[]): AggregatedRow[] {
       acc.pfrSum += p.pfr * p.handsPlayed
       acc.afSum += p.af * p.handsPlayed
       acc.wtsdSum += p.wtsd * p.handsPlayed
-      acc.threeBetSum += (p.threeBet ?? 0) * p.handsPlayed
-      acc.foldToThreeBetSum += (p.foldToThreeBet ?? 0) * p.handsPlayed
-      acc.cbetSum += (p.cbet ?? 0) * p.handsPlayed
-      acc.foldToCbetSum += (p.foldToCbet ?? 0) * p.handsPlayed
-      acc.checkRaiseSum += (p.checkRaise ?? 0) * p.handsPlayed
-      acc.wdsdSum += (p.wdsd ?? 0) * p.handsPlayed
-      if ((p.biggestWin ?? 0) > acc.biggestWin) acc.biggestWin = p.biggestWin
-      if ((p.biggestLoss ?? 0) < acc.biggestLoss) acc.biggestLoss = p.biggestLoss
-      if ((p.bestMadeHandScore ?? -1) > acc.bestMadeHandScore) {
+      acc.threeBetSum += p.threeBet * p.handsPlayed
+      acc.foldToThreeBetSum += p.foldToThreeBet * p.handsPlayed
+      acc.cbetSum += p.cbet * p.handsPlayed
+      acc.foldToCbetSum += p.foldToCbet * p.handsPlayed
+      acc.checkRaiseSum += p.checkRaise * p.handsPlayed
+      acc.wdsdSum += p.wdsd * p.handsPlayed
+      if (p.biggestWin > acc.biggestWin) acc.biggestWin = p.biggestWin
+      if (p.biggestLoss < acc.biggestLoss) acc.biggestLoss = p.biggestLoss
+      if (p.bestMadeHandScore > acc.bestMadeHandScore) {
         acc.bestMadeHandScore = p.bestMadeHandScore
         acc.bestMadeHandDesc = p.bestMadeHandDesc
       }
-      acc.hoursPlayed += p.hoursPlayed ?? 0
+      acc.hoursPlayed += p.hoursPlayed
       acc.handsPlayed += p.handsPlayed
       acc.sessionIds.add(session.id)
     }
@@ -147,7 +147,7 @@ function buildCrossSessionTimeline(sessions: Session[]): CrossSessionTimeline {
 
   const allNames = new Set<string>()
   for (const session of sorted) {
-    for (const p of session.playerStats ?? []) allNames.add(p.displayName)
+    for (const p of session.playerStats) allNames.add(p.displayName)
   }
 
   const running = new Map<string, number>()
@@ -159,7 +159,7 @@ function buildCrossSessionTimeline(sessions: Session[]): CrossSessionTimeline {
 
   for (const session of sorted) {
     const netByPlayer = new Map<string, number>()
-    for (const p of session.playerStats ?? []) netByPlayer.set(p.displayName, p.net)
+    for (const p of session.playerStats) netByPlayer.set(p.displayName, p.net)
     for (const name of allNames) {
       const prev = running.get(name) ?? 0
       const next = prev + (netByPlayer.get(name) ?? 0)

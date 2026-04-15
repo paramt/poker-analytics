@@ -8,8 +8,6 @@ import SharedHandView from './components/SharedHandView'
 import AggregateStatsPage from './components/AggregateStatsPage'
 import { loadSession } from './lib/db'
 
-// ─── Route: /session/:id/hand/:handId ────────────────────────────────────────
-
 function HandPage() {
   const { id, handId } = useParams<{ id: string; handId: string }>()
   const { session, setSession, setFlaggedHands, flaggedHands, flaggedNavMode } = useStore()
@@ -22,7 +20,7 @@ function HandPage() {
     loadSession(id).then(s => {
       if (s) {
         setSession(s)
-        setFlaggedHands(s.flaggedHands ?? [])
+        setFlaggedHands(s.flaggedHands)
       } else {
         setMissing(true)
       }
@@ -59,8 +57,6 @@ function HandPage() {
   )
 }
 
-// ─── Route: /session/:id ─────────────────────────────────────────────────────
-
 function SessionPage() {
   const { id } = useParams<{ id: string }>()
   const { session, setSession, setFlaggedHands } = useStore()
@@ -73,7 +69,7 @@ function SessionPage() {
     loadSession(id).then(s => {
       if (s) {
         setSession(s)
-        setFlaggedHands(s.flaggedHands ?? [])
+        setFlaggedHands(s.flaggedHands)
       } else {
         setMissing(true)
       }
@@ -86,8 +82,6 @@ function SessionPage() {
 
   return <SessionView />
 }
-
-// ─── Shared helpers ───────────────────────────────────────────────────────────
 
 function Spinner() {
   return (
@@ -106,10 +100,8 @@ function NotFound({ message, backTo }: { message: string; backTo: string }) {
   )
 }
 
-// ─── Root ─────────────────────────────────────────────────────────────────────
-
 export default function App() {
-  // Shared hand URLs use ?hand= query param — keep working as before
+  // Shared hand URLs bypass the router — the ?hand= param carries the full hand payload
   if (new URLSearchParams(window.location.search).get('hand')) {
     return <SharedHandView />
   }
