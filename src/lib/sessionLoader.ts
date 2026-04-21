@@ -6,7 +6,7 @@ import { computeStats, computeAllPlayerStats, tagBigPots, tagRareHands } from '.
 
 export const DEMO_SESSION_ID = 'demo'
 
-const DEMO_HERO_ID = 'PARAM001'
+const DEMO_HERO_ID = '1c6V3eltlj'
 const DEMO_FILENAME = 'demo-session.csv'
 const DEMO_CSV_URL = `${import.meta.env.BASE_URL}demo.csv`
 

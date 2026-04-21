@@ -7,45 +7,39 @@ import type { FlaggedHand } from '../types'
  */
 export const DEMO_FLAGS: FlaggedHand[] = [
   {
-    handId: 12,
-    tag: 'hero',
-    summary:
-      "Param called a river shove with middle pair on a scary double-paired board. Most players fold here, but the pot odds and villain's aggressive betting line pointed to a bluff.",
-  },
-  {
-    handId: 25,
+    handId: 4,
     tag: 'learning',
     summary:
-      'Param continuation-bet into three opponents on a K-9-3 rainbow board with air. Multi-way c-bets with no equity are usually spews — check-folding preserves more chips.',
+      'Hero 3-bet the river to 225 with two pair (eights and sixes, both on the board) on a double-paired 4-6-8-8-6 runout after facing a bet and a raise — a major spew that ran into BTN\'s full house with K6.',
   },
   {
-    handId: 41,
-    tag: 'laydown',
-    summary:
-      "Param correctly folded top pair (aces) to a check-raise on the turn after a flush completed. Villain's range on this runout is heavily weighted toward made flushes.",
-  },
-  {
-    handId: 58,
-    tag: 'hero',
-    summary:
-      'Param called a large flop check-raise with ace-high on a low connected board. Reading the check-raise as a semi-bluff from a draw-heavy range was spot on.',
-  },
-  {
-    handId: 73,
+    handId: 6,
     tag: 'learning',
     summary:
-      'Param over-bet the river with two pair on a monotone board, getting called by a flopped flush. Sizing down to 50% pot extracts value and avoids losing to a better hand.',
+      'Hero turn-barreled and river-overbet (225) in a 3-bet pot with AJ on 9-10-10-6-4, essentially playing the board with a pair of tens — a line that folds out worse and gets called by better, losing 405 to BTN\'s pocket twos.',
   },
   {
-    handId: 87,
+    handId: 52,
+    tag: 'learning',
+    summary:
+      "Called three streets (flop raise, turn 150, river 350) with trip deuces in a 3-bet pot against BTN's raise-and-barrel line; BTN had flopped top set of kings. BTN's line in a raised+cold-called pot represents better hands far too often to call off with trips.",
+  },
+  {
+    handId: 78,
+    tag: 'learning',
+    summary:
+      'Called BB\'s river raise with the dummy-end straight (J-high on T-J-9-6-9 board); BB held Q-K for the nut K-high straight. Folding the idiot end to a raise is a classic PLO discipline spot.',
+  },
+  {
+    handId: 86,
     tag: 'laydown',
     summary:
-      "Param folded an overpair (kings) facing a 3-bet shove from Raghav who had been playing tight. With Raghav's tight 3-bet range, kings are likely crushed by aces here.",
+      'Folded KK overpair to BTN\'s turn raise on a paired, three-flush board (Tc-7s-2c-7c) after betting; BTN actually had top set turned into a full house (TTT). Correct fold that saved meaningful chips against a clear monster.',
   },
   {
-    handId: 95,
-    tag: 'notable',
+    handId: 103,
+    tag: 'learning',
     summary:
-      'Both Param and Raghav held pocket tens, splitting the pot on a board that made no better hand possible — a rare duplicate hole card cooler worth seeing.',
+      'Hero raised river from 80 to 300 with bottom two pair (jacks and twos) on a paired-jacks board against a preflop 3-bettor who barreled three streets; villain had top two pair (aces and jacks) and called, costing 410.',
   },
 ]
