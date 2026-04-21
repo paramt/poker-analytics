@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'wouter'
 import { listSessions, saveSession } from '../lib/db'
-import { parseCSV, extractAllPlayers } from '../lib/parser'
-import { computeStats, computeAllPlayerStats, tagBigPots, tagRareHands } from '../lib/stats'
+import { extractAllPlayers } from '../lib/parser'
+import { computeAllPlayerStats } from '../lib/stats'
+import { createSessionFromCsvText } from '../lib/sessionLoader'
 import type { Session } from '../types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -437,25 +438,11 @@ export default function AggregateStatsPage() {
       const { file, heroId } = pendingFiles[i]
       try {
         const text = await file.text()
-        const hands = parseCSV(text, heroId)
-        if (hands.length === 0) throw new Error('no hands found for selected hero')
-
-        const stats = computeStats(hands, heroId)
-        const playerStats = computeAllPlayerStats(hands)
-        const flaggedHands = [...tagBigPots(hands), ...tagRareHands(hands)].sort((a, b) => a.handId - b.handId)
-        const heroPlayer = hands[0]?.players[heroId]
-
-        const session: Session = {
-          id: crypto.randomUUID(),
+        const session = createSessionFromCsvText(text, {
           filename: file.name,
-          uploadedAt: new Date().toISOString(),
           heroId,
-          heroDisplayName: heroPlayer?.displayName ?? heroId,
-          hands,
-          stats,
-          playerStats,
-          flaggedHands,
-        }
+          emptyHandsMessage: 'no hands found for selected hero',
+        })
         await saveSession(session)
       } catch (err) {
         errors.push(`${file.name}: ${err instanceof Error ? err.message : 'failed'}`)

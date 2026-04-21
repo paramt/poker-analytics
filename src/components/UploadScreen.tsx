@@ -2,12 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, Link } from 'wouter'
 import { useStore } from '../store'
 import type { Session } from '../types'
-import { parseCSV, extractAllPlayers } from '../lib/parser'
-import { computeStats, computeAllPlayerStats, tagBigPots, tagRareHands } from '../lib/stats'
+import { extractAllPlayers } from '../lib/parser'
 import { saveSession, listSessions } from '../lib/db'
 import { scanHands } from '../lib/claude'
+import { createSessionFromCsvText } from '../lib/sessionLoader'
 import ApiKeyInput from './ApiKeyInput'
-import { DEMO_FLAGS } from '../data/demoFlags'
 
 export default function UploadScreen() {
   const [, navigate] = useLocation()
@@ -21,7 +20,6 @@ export default function UploadScreen() {
   const [parseError, setParseError] = useState<string | null>(null)
   const [recentSessions, setRecentSessions] = useState<Session[]>([])
   const [isStarting, setIsStarting] = useState(false)
-  const [isLoadingDemo, setIsLoadingDemo] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -76,32 +74,12 @@ export default function UploadScreen() {
     setParseError(null)
 
     try {
-      const hands = parseCSV(csvText, heroId)
-      if (hands.length === 0) {
-        setParseError('No hands found for the selected player. Try a different hero.')
-        setIsStarting(false)
-        return
-      }
-
-      const stats = computeStats(hands, heroId)
-      const playerStats = computeAllPlayerStats(hands)
-      const bigpotFlags = tagBigPots(hands)
-      const rareFlags = tagRareHands(hands)
-      const deterministicFlags = [...bigpotFlags, ...rareFlags].sort((a, b) => a.handId - b.handId)
-
-      const heroPlayer = hands[0]?.players[heroId]
-
-      const session: Session = {
-        id: crypto.randomUUID(),
+      const session = createSessionFromCsvText(csvText, {
         filename,
-        uploadedAt: new Date().toISOString(),
         heroId,
-        heroDisplayName: heroPlayer?.displayName ?? heroId,
-        hands,
-        stats,
-        playerStats,
-        flaggedHands: deterministicFlags,
-      }
+        emptyHandsMessage: 'No hands found for the selected player. Try a different hero.',
+      })
+      const deterministicFlags = session.flaggedHands
 
       await saveSession(session)
       setSession(session)
@@ -110,8 +88,8 @@ export default function UploadScreen() {
 
       // Background AI scan (fire and forget)
       if (apiKey) {
-        setScanState({ isScanning: true, progress: { completed: 0, total: Math.ceil(hands.length / 50) } })
-        scanHands(hands, heroId, apiKey, (progress) => {
+        setScanState({ isScanning: true, progress: { completed: 0, total: Math.ceil(session.hands.length / 50) } })
+        scanHands(session.hands, heroId, apiKey, (progress) => {
           setScanState({ isScanning: true, progress })
         }).then(async ({ results: aiResults, partial: aiPartial }) => {
           const allFlags = [...deterministicFlags, ...aiResults].sort((a, b) => a.handId - b.handId)
@@ -132,49 +110,8 @@ export default function UploadScreen() {
     navigate(`/session/${sessionId}`)
   }
 
-  async function handleDemo() {
-    setIsLoadingDemo(true)
-    setParseError(null)
-
-    try {
-      const response = await fetch('demo.csv')
-      if (!response.ok) throw new Error('Failed to fetch demo data.')
-      const csvText = await response.text()
-
-      const demoHeroId = 'PARAM001'
-      const hands = parseCSV(csvText, demoHeroId)
-      if (hands.length === 0) throw new Error('Demo CSV produced no hands.')
-
-      const stats = computeStats(hands, demoHeroId)
-      const playerStats = computeAllPlayerStats(hands)
-      const bigpotFlags = tagBigPots(hands)
-      const rareFlags = tagRareHands(hands)
-      // Merge client-computed deterministic flags with the pre-computed AI flags
-      const allFlags = [...bigpotFlags, ...rareFlags, ...DEMO_FLAGS].sort((a, b) => a.handId - b.handId)
-
-      const heroPlayer = hands[0]?.players[demoHeroId]
-
-      const session: Session = {
-        id: crypto.randomUUID(),
-        filename: 'demo-session.csv',
-        uploadedAt: new Date().toISOString(),
-        heroId: demoHeroId,
-        heroDisplayName: heroPlayer?.displayName ?? 'Param',
-        hands,
-        stats,
-        playerStats,
-        flaggedHands: allFlags,
-      }
-
-      await saveSession(session)
-      setSession(session)
-      setFlaggedHands(allFlags)
-      navigate(`/session/${session.id}`)
-      // No AI scan triggered — pre-computed flags are already loaded
-    } catch (err) {
-      setParseError(err instanceof Error ? err.message : 'Failed to load demo session.')
-      setIsLoadingDemo(false)
-    }
+  function handleDemo() {
+    navigate('/session/demo')
   }
 
   const canStart = !!csvText && !!heroId
@@ -292,10 +229,9 @@ export default function UploadScreen() {
         </div>
         <button
           onClick={handleDemo}
-          disabled={isLoadingDemo}
           className="w-full py-2.5 rounded-xl text-sm font-medium transition-colors border border-gray-600 text-gray-300 hover:border-gray-500 hover:text-gray-100 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
-          {isLoadingDemo ? 'Loading demo…' : 'Try a sample session →'}
+          Try a sample session →
         </button>
         <p className="text-center text-xs text-gray-600 -mt-3">
           Pre-loaded sample session — no API key needed

@@ -6,27 +6,49 @@ import SessionView from './components/SessionView'
 import HandReplayer from './components/HandReplayer'
 import SharedHandView from './components/SharedHandView'
 import AggregateStatsPage from './components/AggregateStatsPage'
-import { loadSession } from './lib/db'
+import { loadSessionForRoute } from './lib/sessionLoader'
 
-function HandPage() {
-  const { id, handId } = useParams<{ id: string; handId: string }>()
-  const { session, setSession, setFlaggedHands, flaggedHands, flaggedNavMode } = useStore()
+function useRouteSession(id: string) {
+  const { session, setSession, setFlaggedHands, setScanState } = useStore()
   const [loading, setLoading] = useState(false)
   const [missing, setMissing] = useState(false)
 
   useEffect(() => {
     if (session?.id === id) return
+
+    let cancelled = false
     setLoading(true)
-    loadSession(id).then(s => {
-      if (s) {
-        setSession(s)
-        setFlaggedHands(s.flaggedHands)
+    setMissing(false)
+
+    loadSessionForRoute(id).then((loadedSession) => {
+      if (cancelled) return
+
+      if (loadedSession) {
+        setSession(loadedSession)
+        setFlaggedHands(loadedSession.flaggedHands)
+        setScanState({ isScanning: false })
       } else {
         setMissing(true)
       }
       setLoading(false)
+    }).catch(() => {
+      if (cancelled) return
+      setMissing(true)
+      setLoading(false)
     })
-  }, [id, handId])
+
+    return () => {
+      cancelled = true
+    }
+  }, [id, session?.id, setFlaggedHands, setScanState, setSession])
+
+  return { session, loading, missing }
+}
+
+function HandPage() {
+  const { id, handId } = useParams<{ id: string; handId: string }>()
+  const { flaggedHands, flaggedNavMode } = useStore()
+  const { session, loading, missing } = useRouteSession(id)
 
   const flaggedIds = new Set(flaggedHands.map(f => f.handId))
 
@@ -59,23 +81,7 @@ function HandPage() {
 
 function SessionPage() {
   const { id } = useParams<{ id: string }>()
-  const { session, setSession, setFlaggedHands } = useStore()
-  const [loading, setLoading] = useState(false)
-  const [missing, setMissing] = useState(false)
-
-  useEffect(() => {
-    if (session?.id === id) return
-    setLoading(true)
-    loadSession(id).then(s => {
-      if (s) {
-        setSession(s)
-        setFlaggedHands(s.flaggedHands)
-      } else {
-        setMissing(true)
-      }
-      setLoading(false)
-    })
-  }, [id])
+  const { session, loading, missing } = useRouteSession(id)
 
   if (loading || (!session && !missing)) return <Spinner />
   if (missing) return <NotFound message="Session not found." backTo="/" />
