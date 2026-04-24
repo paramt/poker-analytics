@@ -14,7 +14,7 @@ export function startScan(
   if (activeScans.has(session.id)) return
   activeScans.add(session.id)
 
-  const batchCount = Math.ceil(session.hands.length / 50)
+  const batchCount = Math.ceil(session.hands.length / 25)
   useStore.getState().setScanState({ isScanning: true, progress: { completed: 0, total: batchCount } })
 
   scanHands(session.hands, heroId, apiKey, (progress) => {
