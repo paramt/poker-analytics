@@ -4,13 +4,13 @@ import { useStore } from '../store'
 import type { Session } from '../types'
 import { extractAllPlayers } from '../lib/parser'
 import { saveSession, listSessions } from '../lib/db'
-import { scanHands } from '../lib/claude'
+import { startScan } from '../lib/scanManager'
 import { createSessionFromCsvText } from '../lib/sessionLoader'
 import ApiKeyInput from './ApiKeyInput'
 
 export default function UploadScreen() {
   const [, navigate] = useLocation()
-  const { setSession, setFlaggedHands, setScanState, apiKey } = useStore()
+  const { setSession, setFlaggedHands, apiKey } = useStore()
 
   const [dragOver, setDragOver] = useState(false)
   const [csvText, setCsvText] = useState<string | null>(null)
@@ -86,19 +86,8 @@ export default function UploadScreen() {
       setFlaggedHands(deterministicFlags)
       navigate(`/session/${session.id}`)
 
-      // Background AI scan (fire and forget)
       if (apiKey) {
-        setScanState({ isScanning: true, progress: { completed: 0, total: Math.ceil(session.hands.length / 50) } })
-        scanHands(session.hands, heroId, apiKey, (progress) => {
-          setScanState({ isScanning: true, progress })
-        }).then(async ({ results: aiResults, partial: aiPartial }) => {
-          const allFlags = [...deterministicFlags, ...aiResults].sort((a, b) => a.handId - b.handId)
-          setFlaggedHands(allFlags)
-          setScanState({ isScanning: false, partial: aiPartial })
-          await saveSession({ ...session, flaggedHands: allFlags })
-        }).catch(() => {
-          setScanState({ isScanning: false, partial: true })
-        })
+        startScan(session, deterministicFlags, heroId, apiKey)
       }
     } catch (err) {
       setParseError(err instanceof Error ? err.message : 'An unexpected error occurred.')

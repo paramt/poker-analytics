@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Router, Switch, Route, useParams, Link } from 'wouter'
+import { Router, Switch, Route, useParams, Link, useLocation } from 'wouter'
 import { useStore } from './store'
 import UploadScreen from './components/UploadScreen'
 import SessionView from './components/SessionView'
@@ -89,6 +89,21 @@ function SessionPage() {
   return <SessionView />
 }
 
+function ScanningBadge() {
+  const { isScanning, scanProgress } = useStore()
+  const [location] = useLocation()
+  // SessionView has its own full-width banner — only show here on the hand replayer
+  if (!isScanning || !location.includes('/hand/')) return null
+  return (
+    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 bg-gray-800 border border-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-full shadow-lg">
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+      {scanProgress
+        ? `AI analysis ${scanProgress.completed}/${scanProgress.total}…`
+        : 'AI analysis in progress…'}
+    </div>
+  )
+}
+
 function Spinner() {
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center text-gray-500 text-sm">
@@ -120,6 +135,7 @@ export default function App() {
         <Route path="/stats" component={AggregateStatsPage} />
         <Route component={UploadScreen} />
       </Switch>
+      <ScanningBadge />
     </Router>
   )
 }
