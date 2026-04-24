@@ -1,5 +1,5 @@
 import { useStore } from '../store'
-import { scanHands } from './claude'
+import { scanHands, BATCH_SIZE } from './claude'
 import { saveSession } from './db'
 import type { Session, FlaggedHand } from '../types'
 
@@ -14,7 +14,7 @@ export function startScan(
   if (activeScans.has(session.id)) return
   activeScans.add(session.id)
 
-  const batchCount = Math.ceil(session.hands.length / 25)
+  const batchCount = Math.ceil(session.hands.length / BATCH_SIZE)
   useStore.getState().setScanState({ isScanning: true, progress: { completed: 0, total: batchCount } })
 
   scanHands(session.hands, heroId, apiKey, (progress) => {

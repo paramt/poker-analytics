@@ -3,7 +3,7 @@ import type { Hand, FlaggedHand, AITag } from '../types'
 import { bestHandDescription } from './handEval'
 
 const VALID_TAGS = new Set<AITag>(['learning', 'hero', 'laydown', 'bigpot', 'notable'])
-const BATCH_SIZE = 25
+export const BATCH_SIZE = 25
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 1000
 
