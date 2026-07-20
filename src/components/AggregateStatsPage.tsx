@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'wouter'
-import { listSessions, saveSession } from '../lib/db'
+import { listSessions, saveSession, getPlayerAliases, savePlayerAliases } from '../lib/db'
 import { extractAllPlayers } from '../lib/parser'
 import { computeAllPlayerStats } from '../lib/stats'
 import { createSessionFromCsvText } from '../lib/sessionLoader'
@@ -60,7 +60,11 @@ function deduplicateSessions(sessions: Session[]): Session[] {
   return Array.from(groups.values())
 }
 
-function aggregateAllPlayers(sessions: Session[]): AggregatedRow[] {
+function resolveName(name: string, aliasMap: Record<string, string>): string {
+  return aliasMap[name] ?? name
+}
+
+function aggregateAllPlayers(sessions: Session[], aliasMap: Record<string, string>): AggregatedRow[] {
   const byName = new Map<string, {
     net: number; handsPlayed: number
     vpipSum: number; pfrSum: number; afSum: number; wtsdSum: number
@@ -74,8 +78,9 @@ function aggregateAllPlayers(sessions: Session[]): AggregatedRow[] {
 
   for (const session of sessions) {
     for (const p of session.playerStats) {
-      if (!byName.has(p.displayName)) {
-        byName.set(p.displayName, {
+      const displayName = resolveName(p.displayName, aliasMap)
+      if (!byName.has(displayName)) {
+        byName.set(displayName, {
           net: 0, handsPlayed: 0,
           vpipSum: 0, pfrSum: 0, afSum: 0, wtsdSum: 0,
           threeBetSum: 0, foldToThreeBetSum: 0, cbetSum: 0, foldToCbetSum: 0,
@@ -86,7 +91,7 @@ function aggregateAllPlayers(sessions: Session[]): AggregatedRow[] {
           sessionIds: new Set(),
         })
       }
-      const acc = byName.get(p.displayName)!
+      const acc = byName.get(displayName)!
       acc.net += p.net
       acc.vpipSum += p.vpip * p.handsPlayed
       acc.pfrSum += p.pfr * p.handsPlayed
@@ -137,7 +142,7 @@ function aggregateAllPlayers(sessions: Session[]): AggregatedRow[] {
     .sort((a, b) => b.net - a.net)
 }
 
-function buildCrossSessionTimeline(sessions: Session[]): CrossSessionTimeline {
+function buildCrossSessionTimeline(sessions: Session[], aliasMap: Record<string, string>): CrossSessionTimeline {
   const sorted = [...sessions].sort((a, b) =>
     a.hands[0].timestamp.localeCompare(b.hands[0].timestamp)
   )
@@ -148,7 +153,7 @@ function buildCrossSessionTimeline(sessions: Session[]): CrossSessionTimeline {
 
   const allNames = new Set<string>()
   for (const session of sorted) {
-    for (const p of session.playerStats) allNames.add(p.displayName)
+    for (const p of session.playerStats) allNames.add(resolveName(p.displayName, aliasMap))
   }
 
   const running = new Map<string, number>()
@@ -160,7 +165,10 @@ function buildCrossSessionTimeline(sessions: Session[]): CrossSessionTimeline {
 
   for (const session of sorted) {
     const netByPlayer = new Map<string, number>()
-    for (const p of session.playerStats) netByPlayer.set(p.displayName, p.net)
+    for (const p of session.playerStats) {
+      const displayName = resolveName(p.displayName, aliasMap)
+      netByPlayer.set(displayName, (netByPlayer.get(displayName) ?? 0) + p.net)
+    }
     for (const name of allNames) {
       const prev = running.get(name) ?? 0
       const next = prev + (netByPlayer.get(name) ?? 0)
@@ -356,6 +364,12 @@ export default function AggregateStatsPage() {
   const [totalHands, setTotalHands] = useState(0)
   const [duplicatesRemoved, setDuplicatesRemoved] = useState(0)
 
+  const [aliasMap, setAliasMap] = useState<Record<string, string>>({})
+  const [rawNames, setRawNames] = useState<string[]>([])
+  const [showIdentityPanel, setShowIdentityPanel] = useState(false)
+  const [mergeSelection, setMergeSelection] = useState<Set<string>>(new Set())
+  const [mergeTarget, setMergeTarget] = useState('')
+
   const [dragOver, setDragOver] = useState(false)
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([])
   const [parsing, setParsing] = useState(false)
@@ -381,9 +395,16 @@ export default function AggregateStatsPage() {
     setTotalSessions(deduped.length)
     setDuplicatesRemoved(sessions.length - deduped.length)
     setTotalHands(deduped.reduce((sum, s) => sum + s.hands.length, 0))
-    const aggregated = aggregateAllPlayers(deduped)
+
+    const aliases = await getPlayerAliases()
+    setAliasMap(aliases)
+    const rawNameSet = new Set<string>()
+    for (const s of deduped) for (const p of s.playerStats) rawNameSet.add(p.displayName)
+    setRawNames(Array.from(rawNameSet).sort())
+
+    const aggregated = aggregateAllPlayers(deduped, aliases)
     setRows(aggregated)
-    setTimeline(buildCrossSessionTimeline(deduped))
+    setTimeline(buildCrossSessionTimeline(deduped, aliases))
     // Sync selectedPlayers: keep existing selections, add new players, remove gone ones
     setSelectedPlayers(prev => {
       const allNames = new Set(aggregated.map(r => r.displayName))
@@ -464,6 +485,49 @@ export default function AggregateStatsPage() {
       else next.add(name)
       return next
     })
+  }
+
+  const aliasGroups = useMemo(() => {
+    const groups = new Map<string, string[]>()
+    for (const name of rawNames) {
+      const canonical = aliasMap[name] ?? name
+      if (!groups.has(canonical)) groups.set(canonical, [])
+      groups.get(canonical)!.push(name)
+    }
+    return Array.from(groups.entries())
+      .map(([canonical, members]) => ({ canonical, members: members.sort() }))
+      .filter(g => g.members.length > 1)
+      .sort((a, b) => a.canonical.localeCompare(b.canonical))
+  }, [rawNames, aliasMap])
+
+  function toggleMergeSelection(name: string) {
+    setMergeSelection(prev => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
+
+  async function applyMerge() {
+    const target = mergeTarget.trim()
+    if (!target || mergeSelection.size === 0) return
+    const next = { ...aliasMap }
+    for (const name of mergeSelection) {
+      if (name === target) delete next[name]
+      else next[name] = target
+    }
+    await savePlayerAliases(next)
+    setMergeSelection(new Set())
+    setMergeTarget('')
+    await loadStats()
+  }
+
+  async function unmergeName(name: string) {
+    const next = { ...aliasMap }
+    delete next[name]
+    await savePlayerAliases(next)
+    await loadStats()
   }
 
   const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -601,6 +665,88 @@ export default function AggregateStatsPage() {
         {uploadErrors.length > 0 && (
           <div className="bg-red-900/40 border border-red-700 text-red-300 rounded-xl px-4 py-3 text-sm flex flex-col gap-1">
             {uploadErrors.map((e, i) => <div key={i}>{e}</div>)}
+          </div>
+        )}
+
+        {/* Player identity merging */}
+        {rawNames.length > 1 && (
+          <div className="bg-gray-800 rounded-xl border border-gray-700">
+            <button
+              onClick={() => setShowIdentityPanel(v => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-300 cursor-pointer"
+            >
+              <span>Player Identities{aliasGroups.length > 0 && ` (${aliasGroups.length} merged)`}</span>
+              <span className="text-gray-500 text-xs font-normal">
+                {showIdentityPanel ? 'Hide' : 'Merge names that belong to the same player'}
+              </span>
+            </button>
+            {showIdentityPanel && (
+              <div className="px-4 pb-4 flex flex-col gap-4 border-t border-gray-700 pt-4">
+                {aliasGroups.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <div className="text-xs uppercase tracking-wide text-gray-500">Merged groups</div>
+                    {aliasGroups.map(g => (
+                      <div key={g.canonical} className="flex flex-wrap items-center gap-1.5 text-xs bg-gray-900/50 rounded-lg px-3 py-2">
+                        <span className="font-semibold text-emerald-400">{g.canonical}</span>
+                        <span className="text-gray-600">←</span>
+                        {g.members.filter(m => m !== g.canonical).map(m => (
+                          <span key={m} className="flex items-center gap-1 bg-gray-700 rounded-full px-2 py-0.5 text-gray-300">
+                            {m}
+                            <button
+                              onClick={() => unmergeName(m)}
+                              className="text-gray-500 hover:text-gray-300 cursor-pointer"
+                              aria-label={`Unmerge ${m}`}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-2">
+                  <div className="text-xs uppercase tracking-wide text-gray-500">Select names to merge</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {rawNames.map(name => {
+                      const canonical = aliasMap[name] ?? name
+                      const active = mergeSelection.has(name)
+                      return (
+                        <button
+                          key={name}
+                          onClick={() => toggleMergeSelection(name)}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                            active
+                              ? 'border-emerald-500 bg-emerald-900/40 text-emerald-300'
+                              : 'border-gray-700 text-gray-400 hover:text-gray-200'
+                          }`}
+                        >
+                          {name}
+                          {canonical !== name && <span className="text-gray-500"> → {canonical}</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={mergeTarget}
+                      onChange={e => setMergeTarget(e.target.value)}
+                      placeholder="Canonical name (e.g. Jay)"
+                      className="flex-1 rounded-md bg-gray-700 border border-gray-600 text-gray-100 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <button
+                      onClick={applyMerge}
+                      disabled={mergeSelection.size === 0 || !mergeTarget.trim()}
+                      className="px-3 py-1.5 rounded-md bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      Merge{mergeSelection.size > 0 ? ` (${mergeSelection.size})` : ''}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

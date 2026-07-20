@@ -2,6 +2,7 @@ import { get, set, keys, del } from 'idb-keyval'
 import type { Session } from '../types'
 
 const SESSION_KEY_PREFIX = 'session:'
+const PLAYER_ALIASES_KEY = 'player-aliases'
 
 function sessionKey(id: string): string {
   return `${SESSION_KEY_PREFIX}${id}`
@@ -48,4 +49,18 @@ export async function listSessions(): Promise<Session[]> {
 
 export async function deleteSession(id: string): Promise<void> {
   await del(sessionKey(id))
+}
+
+// Maps a raw player display name to the canonical name it should be
+// coalesced under, e.g. { "nad_old": "Jay", "nadofficial": "Jay" }.
+export async function getPlayerAliases(): Promise<Record<string, string>> {
+  try {
+    return (await get<Record<string, string>>(PLAYER_ALIASES_KEY)) ?? {}
+  } catch {
+    return {}
+  }
+}
+
+export async function savePlayerAliases(aliases: Record<string, string>): Promise<void> {
+  await set(PLAYER_ALIASES_KEY, aliases)
 }
