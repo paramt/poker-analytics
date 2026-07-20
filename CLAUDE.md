@@ -77,6 +77,10 @@ When a new stat is added to `PlayerStats`, sessions already in IndexedDB won't h
 
 **Rule: any new field added to `PlayerStats` must update the backfill sentinel.** Change the condition in `AggregateStatsPage.loadStats()` to check for the newest field being `undefined`. Current sentinel: `hoursPlayed === undefined`. Pick a field that is always present in the new schema (not optional, not a field that could legitimately be absent).
 
+### Player identity coalescing
+
+A physical player can appear under different `displayName`s across sessions (renames, alt accounts). `db.ts` persists a flat alias map (`getPlayerAliases`/`savePlayerAliases`, IndexedDB key `player-aliases`) of `{ rawName: canonicalName }`. `AggregateStatsPage` resolves every `displayName` through this map (one hop only, no chaining) before grouping in `aggregateAllPlayers` and `buildCrossSessionTimeline`. The "Player Identities" panel on `/stats` lets the user pick raw names and merge them into a canonical name; this is purely an aggregation-layer transform — it does not touch stored `Session`/`PlayerStats` data, so it needs no backfill sentinel.
+
 ## Workflow
 
 - Always commit and push after completing a feature request.
