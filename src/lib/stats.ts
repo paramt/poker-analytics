@@ -364,8 +364,6 @@ export function computeAllPlayerStats(hands: Hand[]): Array<{
   foldToCbet: number
   checkRaise: number
   wdsd: number
-  biggestWin: number
-  biggestLoss: number
   bestMadeHandScore: number
   bestMadeHandDesc: string
   hoursPlayed: number
@@ -402,8 +400,6 @@ export function computeAllPlayerStats(hands: Hand[]): Array<{
     let checkRaiseCount = 0
     let wsdTotal = 0
     let wsdWins = 0
-    let biggestWin = 0
-    let biggestLoss = 0
     let bestMadeHandScore = -1
     let bestMadeHandDesc = ''
 
@@ -430,11 +426,8 @@ export function computeAllPlayerStats(hands: Hand[]): Array<{
       }
 
       const results = computePlayerResults(hand)
-      net += results[playerId] ?? 0
-
       const handNet = results[playerId] ?? 0
-      if (handNet > biggestWin) biggestWin = handNet
-      if (handNet < biggestLoss) biggestLoss = handNet
+      net += handNet
 
       const ss = analyzeHandStreetStats(hand)
       if (ss.threeBetOpps.has(playerId)) { threeBetOpps++; if (ss.threeBets.has(playerId)) threeBetCount++ }
@@ -491,8 +484,6 @@ export function computeAllPlayerStats(hands: Hand[]): Array<{
       foldToCbet: pct(foldToCbetCount, foldToCbetOpps),
       checkRaise: pct(checkRaiseCount, checkRaiseOpps),
       wdsd: pct(wsdWins, wsdTotal),
-      biggestWin: Math.round(biggestWin),
-      biggestLoss: Math.round(biggestLoss),
       bestMadeHandScore,
       bestMadeHandDesc,
       hoursPlayed: playerHands.length >= 2

@@ -65,11 +65,13 @@ src/
 
 `PlayerStats` (defined in `types.ts`) is computed at upload time via `computeAllPlayerStats(hands)` in `stats.ts` and stored on the `Session` object in IndexedDB. The `/stats` page reads these stored values — it does not reprocess hands.
 
-**Stats computed:** VPIP, PFR, AF, WTSD, 3-bet %, fold-to-3bet %, c-bet %, fold-to-c-bet %, check-raise %, W$SD, biggest win, biggest loss, best made hand (score + description via `handEval.ts`).
+**Stats computed:** VPIP, PFR, AF, WTSD, 3-bet %, fold-to-3bet %, c-bet %, fold-to-c-bet %, check-raise %, W$SD, best made hand (score + description via `handEval.ts`).
 
 **Deduplication:** sessions with the same first-hand timestamp are treated as duplicates; the one with the most hands is kept.
 
-**Aggregation across sessions:** percentage stats are weighted by `handsPlayed`. `biggestWin`/`biggestLoss` take the max/min across sessions. `bestMadeHandScore` takes the max (highest score wins).
+**Aggregation across sessions:** percentage stats are weighted by `handsPlayed`. `bestMadeHandScore` takes the max (highest score wins).
+
+**Best Win / Worst Loss:** shown on `/stats` only — these are aggregation-layer values, not `PlayerStats` fields. `AggregateStatsPage.aggregateAllPlayers()` takes the max/min of each player's per-session `net` across all their sessions (i.e. their single best/worst *session*, not a single hand). There used to be a per-hand `biggestWin`/`biggestLoss` on `PlayerStats`; it was removed since it was easy to confuse with a session total — if you need single-hand extremes again, don't resurrect those fields blindly, reconsider what the UI should actually label it as first.
 
 ### Backfilling
 

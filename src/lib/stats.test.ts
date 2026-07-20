@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeStats, tagBigPots, tagRareHands } from './stats'
+import { computeStats, tagBigPots, tagRareHands, computeAllPlayerStats, computePlayerResults } from './stats'
 import type { Hand, Action } from '../types'
 
 const HERO_ID = 'hero123'
@@ -122,6 +122,148 @@ describe('computeStats', () => {
     const hands = [makeHand(1), makeHand(2), makeHand(3)]
     const stats = computeStats(hands, HERO_ID)
     expect(stats.handsPlayed).toBe(3)
+  })
+})
+
+describe('computePlayerResults', () => {
+  it('splits a simple bet/call/collect pot with zero-sum results', () => {
+    const hand = makeHand(1, {
+      preflop: [
+        { player: HERO_ID, type: 'bet', amount: 300 },
+        { player: 'villain', type: 'call', amount: 300 },
+        { player: HERO_ID, type: 'collect', amount: 600 },
+      ],
+    })
+    const results = computePlayerResults(hand)
+    expect(results[HERO_ID]).toBe(300)
+    expect(results.villain).toBe(-300)
+    expect(results[HERO_ID] + results.villain).toBe(0)
+  })
+
+  it('nets out an uncalled bet that gets returned (raise, call, bet, fold, uncalled, collect)', () => {
+    const hand = makeHand(1, {
+      preflop: [
+        { player: 'villain', type: 'raise', amount: 100 },
+        { player: HERO_ID, type: 'call', amount: 100 },
+      ],
+      flop: [
+        { player: HERO_ID, type: 'bet', amount: 50 },
+        { player: 'villain', type: 'fold' },
+        { player: HERO_ID, type: 'uncalled', amount: 50 },
+        { player: HERO_ID, type: 'collect', amount: 200 },
+      ],
+    })
+    const results = computePlayerResults(hand)
+    // Hero only ever risked the 100 preflop call — the 50 flop bet came back uncalled.
+    expect(results[HERO_ID]).toBe(100)
+    expect(results.villain).toBe(-100)
+  })
+
+  it('does not double-count a blind that gets raised on the same street', () => {
+    const hand = makeHand(1, {
+      preflop: [
+        { player: 'villain', type: 'post_bb', amount: 20 },
+        { player: HERO_ID, type: 'raise', amount: 300 },
+        { player: 'villain', type: 'call', amount: 300 },
+        { player: HERO_ID, type: 'collect', amount: 600 },
+      ],
+    })
+    const results = computePlayerResults(hand)
+    // villain's BB (20) is already included in their "calls 300" total-street-commitment,
+    // so their total loss for the hand should be 300, not 320.
+    expect(results.villain).toBe(-300)
+    expect(results[HERO_ID]).toBe(300)
+  })
+
+  it('charges a player who posts a blind and folds without further action', () => {
+    const hand = makeHand(1, {
+      preflop: [
+        { player: 'villain', type: 'post_bb', amount: 20 },
+        { player: HERO_ID, type: 'raise', amount: 100 },
+        { player: 'villain', type: 'fold' },
+        { player: HERO_ID, type: 'uncalled', amount: 80 },
+        // pot = villain's 20 blind + hero's un-refunded 20 (100 - 80 uncalled) = 40
+        { player: HERO_ID, type: 'collect', amount: 40 },
+      ],
+    })
+    const results = computePlayerResults(hand)
+    expect(results.villain).toBe(-20)
+    expect(results[HERO_ID]).toBe(20)
+  })
+})
+
+describe('computeAllPlayerStats — net', () => {
+  it('sums per-hand net across multiple hands per player', () => {
+    const hands = [
+      makeHand(1, {
+        preflop: [
+          { player: HERO_ID, type: 'bet', amount: 300 },
+          { player: 'villain', type: 'call', amount: 300 },
+          { player: HERO_ID, type: 'collect', amount: 600 },
+        ],
+      }),
+      makeHand(2, {
+        preflop: [
+          { player: 'villain', type: 'bet', amount: 50 },
+          { player: HERO_ID, type: 'call', amount: 50 },
+          { player: 'villain', type: 'collect', amount: 100 },
+        ],
+      }),
+      makeHand(3, {
+        preflop: [
+          { player: HERO_ID, type: 'bet', amount: 20 },
+          { player: 'villain', type: 'call', amount: 20 },
+          { player: HERO_ID, type: 'collect', amount: 40 },
+        ],
+      }),
+    ]
+
+    const stats = computeAllPlayerStats(hands)
+    const hero = stats.find(p => p.playerId === HERO_ID)!
+    const villain = stats.find(p => p.playerId === 'villain')!
+
+    expect(hero.net).toBe(270)   // +300 - 50 + 20
+    expect(villain.net).toBe(-270)
+  })
+
+  it('a folded blind counts as a loss for that hand', () => {
+    const hands = [
+      makeHand(1, {
+        preflop: [
+          { player: 'villain', type: 'post_bb', amount: 20 },
+          { player: HERO_ID, type: 'raise', amount: 500 },
+          { player: 'villain', type: 'fold' },
+          { player: HERO_ID, type: 'uncalled', amount: 480 },
+          // pot = villain's 20 blind + hero's un-refunded 20 (500 - 480 uncalled) = 40
+          { player: HERO_ID, type: 'collect', amount: 40 },
+        ],
+      }),
+    ]
+    const stats = computeAllPlayerStats(hands)
+    const hero = stats.find(p => p.playerId === HERO_ID)!
+    const villain = stats.find(p => p.playerId === 'villain')!
+    expect(villain.net).toBe(-20)
+    expect(hero.net).toBe(20)
+  })
+
+  it('ignores hands a player was not dealt into', () => {
+    const dealtOut = makeHand(2, {
+      players: { [HERO_ID]: { displayName: 'Hero', seat: 1, stack: 1000 } }, // villain absent
+      preflop: [],
+    })
+    const hands = [
+      makeHand(1, {
+        preflop: [
+          { player: HERO_ID, type: 'bet', amount: 10 },
+          { player: 'villain', type: 'call', amount: 10 },
+          { player: HERO_ID, type: 'collect', amount: 20 },
+        ],
+      }),
+      dealtOut,
+    ]
+    const stats = computeAllPlayerStats(hands)
+    const villain = stats.find(p => p.playerId === 'villain')!
+    expect(villain.handsPlayed).toBe(1)
   })
 })
 

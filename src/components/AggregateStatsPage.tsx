@@ -23,8 +23,8 @@ interface AggregatedRow {
   foldToCbet: number
   checkRaise: number
   wdsd: number
-  biggestWin: number
-  biggestLoss: number
+  biggestWin: number   // best single-session net
+  biggestLoss: number  // worst single-session net
   bestMadeHandDesc: string
   chipsPerHour: number
 }
@@ -64,7 +64,7 @@ function resolveName(name: string, aliasMap: Record<string, string>): string {
   return aliasMap[name] ?? name
 }
 
-function aggregateAllPlayers(sessions: Session[], aliasMap: Record<string, string>): AggregatedRow[] {
+export function aggregateAllPlayers(sessions: Session[], aliasMap: Record<string, string>): AggregatedRow[] {
   const byName = new Map<string, {
     net: number; handsPlayed: number
     vpipSum: number; pfrSum: number; afSum: number; wtsdSum: number
@@ -103,8 +103,9 @@ function aggregateAllPlayers(sessions: Session[], aliasMap: Record<string, strin
       acc.foldToCbetSum += p.foldToCbet * p.handsPlayed
       acc.checkRaiseSum += p.checkRaise * p.handsPlayed
       acc.wdsdSum += p.wdsd * p.handsPlayed
-      if (p.biggestWin > acc.biggestWin) acc.biggestWin = p.biggestWin
-      if (p.biggestLoss < acc.biggestLoss) acc.biggestLoss = p.biggestLoss
+      // biggestWin/biggestLoss track the single best/worst SESSION net, not a single hand
+      if (p.net > acc.biggestWin) acc.biggestWin = p.net
+      if (p.net < acc.biggestLoss) acc.biggestLoss = p.net
       if (p.bestMadeHandScore > acc.bestMadeHandScore) {
         acc.bestMadeHandScore = p.bestMadeHandScore
         acc.bestMadeHandDesc = p.bestMadeHandDesc
@@ -142,7 +143,7 @@ function aggregateAllPlayers(sessions: Session[], aliasMap: Record<string, strin
     .sort((a, b) => b.net - a.net)
 }
 
-function buildCrossSessionTimeline(sessions: Session[], aliasMap: Record<string, string>): CrossSessionTimeline {
+export function buildCrossSessionTimeline(sessions: Session[], aliasMap: Record<string, string>): CrossSessionTimeline {
   const sorted = [...sessions].sort((a, b) =>
     a.hands[0].timestamp.localeCompare(b.hands[0].timestamp)
   )
@@ -769,8 +770,8 @@ export default function AggregateStatsPage() {
                     <th className="text-right px-4 py-3">VPIP</th>
                     <th className="text-right px-4 py-3">PFR</th>
                     <th className="text-right px-4 py-3">AF</th>
-                    <th className="text-right px-4 py-3">Best Win</th>
-                    <th className="text-right px-4 py-3">Worst Loss</th>
+                    <th className="text-right px-4 py-3" title="Best single-session net">Best Win</th>
+                    <th className="text-right px-4 py-3" title="Worst single-session net">Worst Loss</th>
                     <th className="text-left px-4 py-3">Best Hand</th>
                   </tr>
                 </thead>

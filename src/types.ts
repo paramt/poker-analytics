@@ -55,8 +55,6 @@ export interface PlayerStats extends SessionStats {
   foldToCbet: number
   checkRaise: number
   wdsd: number
-  biggestWin: number
-  biggestLoss: number
   bestMadeHandScore: number  // evaluate5 score; -1 if never showed
   bestMadeHandDesc: string
   hoursPlayed: number        // session duration from first to last hand appearance
