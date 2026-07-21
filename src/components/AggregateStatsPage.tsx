@@ -36,6 +36,7 @@ interface PlayerTimeline {
 
 interface CrossSessionTimeline {
   sessionDates: string[]
+  sessionMonthKeys: string[]
   players: PlayerTimeline[]
 }
 
@@ -151,6 +152,10 @@ export function buildCrossSessionTimeline(sessions: Session[], aliasMap: Record<
   const sessionDates = sorted.map(s =>
     new Date(s.hands[0].timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   )
+  const sessionMonthKeys = sorted.map(s => {
+    const d = new Date(s.hands[0].timestamp)
+    return `${d.getFullYear()}-${d.getMonth()}`
+  })
 
   const allNames = new Set<string>()
   for (const session of sorted) {
@@ -180,6 +185,7 @@ export function buildCrossSessionTimeline(sessions: Session[], aliasMap: Record<
 
   return {
     sessionDates,
+    sessionMonthKeys,
     players: Array.from(allNames).map(name => ({
       displayName: name,
       cumulative: series.get(name)!,
@@ -211,7 +217,7 @@ function CrossSessionChart({ timeline, selectedPlayers, onToggle }: {
   const containerRef = useRef<HTMLDivElement>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
 
-  const { sessionDates, players } = timeline
+  const { sessionDates, sessionMonthKeys, players } = timeline
   const visiblePlayers = players.filter(p => selectedPlayers.has(p.displayName))
   const n = sessionDates.length + 1
 
@@ -239,7 +245,9 @@ function CrossSessionChart({ timeline, selectedPlayers, onToggle }: {
     return ticks
   }, [yMin, yMax])
 
-  const xTicks = sessionDates.map((label, i) => ({ i: i + 1, label }))
+  const xTicks = sessionDates
+    .map((label, i) => ({ i: i + 1, label, monthKey: sessionMonthKeys[i] }))
+    .filter((tick, idx, arr) => idx === 0 || tick.monthKey !== arr[idx - 1].monthKey)
 
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
     const rect = e.currentTarget.getBoundingClientRect()
